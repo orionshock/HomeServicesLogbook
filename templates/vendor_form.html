@@ -53,10 +53,6 @@
             <input type="text" id="security_pin" name="security_pin" value="{% if vendor %}{{ vendor.security_pin or '' }}{% endif %}">
         </div>
         <div class="form-field">
-            <label for="service_location">Service Location</label>
-            <input type="text" id="service_location" name="service_location" value="{% if vendor %}{{ vendor.service_location or '' }}{% endif %}">
-        </div>
-        <div class="form-field">
             <label for="vendor_notes">Vendor Notes</label>
             <textarea id="vendor_notes" name="vendor_notes" rows="6">{% if vendor %}{{ vendor.vendor_notes or '' }}{% endif %}</textarea>
         </div>

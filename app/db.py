@@ -27,7 +27,6 @@ def init_db() -> None:
                 portal_username TEXT,
                 phone_on_file   TEXT,
                 security_pin    TEXT,
-                service_location TEXT,
                 vendor_notes    TEXT,
                 details_json    TEXT,
                 created_at      TEXT NOT NULL,
@@ -119,7 +118,6 @@ def create_vendor(
     portal_username: str | None,
     phone_on_file: str | None,
     security_pin: str | None,
-    service_location: str | None,
     vendor_notes: str | None,
     created_at: str,
     created_by: str,
@@ -130,10 +128,10 @@ def create_vendor(
             INSERT INTO vendors (
                 vendor_uid, name, category, account_number,
                 name_on_account, portal_url, portal_username,
-                phone_on_file, security_pin, service_location,
+                phone_on_file, security_pin,
                 vendor_notes, created_at, created_by
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 vendor_uid,
@@ -145,7 +143,6 @@ def create_vendor(
                 portal_username,
                 phone_on_file,
                 security_pin,
-                service_location,
                 vendor_notes,
                 created_at,
                 created_by,
@@ -163,7 +160,6 @@ def update_vendor_by_uid(
     portal_username: str | None,
     phone_on_file: str | None,
     security_pin: str | None,
-    service_location: str | None,
     vendor_notes: str | None,
     updated_at: str,
     updated_by: str,
@@ -181,7 +177,6 @@ def update_vendor_by_uid(
                 portal_username = ?,
                 phone_on_file = ?,
                 security_pin = ?,
-                service_location = ?,
                 vendor_notes = ?,
                 updated_at = ?,
                 updated_by = ?
@@ -190,7 +185,7 @@ def update_vendor_by_uid(
             (
                 name, category, account_number, name_on_account,
                 portal_url, portal_username, phone_on_file, security_pin,
-                service_location, vendor_notes, updated_at, updated_by,
+                vendor_notes, updated_at, updated_by,
                 vendor_uid,
             ),
         )

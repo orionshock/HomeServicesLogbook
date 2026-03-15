@@ -389,7 +389,6 @@ def vendor_new_submit(
     portal_username: str = Form(""),
     phone_on_file: str = Form(""),
     security_pin: str = Form(""),
-    service_location: str = Form(""),
     vendor_notes: str = Form(""),
 ):
     actor = request.state.current_actor["actor_id"]
@@ -407,7 +406,6 @@ def vendor_new_submit(
         portal_username=portal_username or None,
         phone_on_file=phone_on_file or None,
         security_pin=security_pin or None,
-        service_location=service_location or None,
         vendor_notes=vendor_notes or None,
         created_at=now,
         created_by=actor,
@@ -572,7 +570,6 @@ def vendor_edit_submit(
     portal_username: str = Form(""),
     phone_on_file: str = Form(""),
     security_pin: str = Form(""),
-    service_location: str = Form(""),
     vendor_notes: str = Form(""),
 ):
     actor = request.state.current_actor["actor_id"]
@@ -590,7 +587,6 @@ def vendor_edit_submit(
         portal_username=portal_username or None,
         phone_on_file=phone_on_file or None,
         security_pin=security_pin or None,
-        service_location=service_location or None,
         vendor_notes=vendor_notes or None,
         updated_at=utc_now_iso(),
         updated_by=actor,

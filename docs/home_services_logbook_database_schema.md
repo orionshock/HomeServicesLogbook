@@ -112,7 +112,6 @@ CREATE TABLE vendors (
     portal_username  TEXT,
     phone_on_file    TEXT,
     security_pin     TEXT,
-    service_location TEXT,
     vendor_notes     TEXT,
     details_json     TEXT,
     created_at       TEXT NOT NULL,
