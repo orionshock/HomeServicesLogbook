@@ -388,14 +388,31 @@ def vendor_new_submit(
 
 
 @app.get("/vendors")
-def vendor_list(request: Request, show_archived: int = 0):
-    include_archived = show_archived == 1
+def vendor_list(request: Request, show_archived: int | None = None):
+    query_has_preference = "show_archived" in request.query_params
+    if query_has_preference:
+        include_archived = show_archived == 1
+    else:
+        include_archived = request.cookies.get("show_archived_vendors") == "1"
+
     vendors = list_vendors(include_archived)
-    return _render_template(
+    response = _render_template(
         request,
         "vendors.html",
         {"vendors": vendors, "show_archived": include_archived},
     )
+
+    if query_has_preference:
+        response.set_cookie(
+            key="show_archived_vendors",
+            value="1" if include_archived else "0",
+            max_age=60 * 60 * 24 * 365,
+            path="/",
+            samesite="lax",
+            httponly=True,
+        )
+
+    return response
 
 
 @app.post("/vendor/{vendor_uid}/archive")
