@@ -20,17 +20,19 @@
 
 <section class="content-section entry-edit-section">
     <form id="entry-form" method="post" action="{{ form_action }}" enctype="multipart/form-data">
+        <div class="entry-meta-grid">
+            <div class="form-field compact-form-field">
+                <label for="rep_name" title="Optional">Rep Name</label>
+                <input type="text" id="rep_name" name="rep_name" title="Optional" value="{% if entry %}{{ entry.rep_name or '' }}{% endif %}">
+            </div>
+            <div class="form-field compact-form-field">
+                <label for="vendor_reference" title="Optional">Vendor Reference</label>
+                <input type="text" id="vendor_reference" name="vendor_reference" title="Optional" value="{% if entry %}{{ entry.vendor_reference or '' }}{% endif %}">
+            </div>
+        </div>
         <div class="form-field">
             <label for="body_text">Entry</label>
             <textarea id="body_text" name="body_text" rows="8">{% if entry %}{{ entry.body_text or '' }}{% endif %}</textarea>
-        </div>
-        <div class="form-field">
-            <label for="vendor_reference">Vendor Reference{% if mode == "create" %} (optional){% endif %}</label>
-            <input type="text" id="vendor_reference" name="vendor_reference" value="{% if entry %}{{ entry.vendor_reference or '' }}{% endif %}">
-        </div>
-        <div class="form-field">
-            <label for="rep_name">Rep Name{% if mode == "create" %} (optional){% endif %}</label>
-            <input type="text" id="rep_name" name="rep_name" value="{% if entry %}{{ entry.rep_name or '' }}{% endif %}">
         </div>
 
         {% if mode == "edit" %}
@@ -60,15 +62,16 @@
             <p id="attachment-name" class="attachment-name">No file selected</p>
         </div>
 
-        <div class="entry-actions">
-            <button type="submit" class="btn btn-primary">{{ submit_label }}</button>
-            {% if mode == "create" %}
-            <button type="button" id="calendar-trigger" class="btn btn-secondary">Add Calendar Event</button>
-            {% endif %}
-            <a href="/vendor/{{ vendor.vendor_uid }}" class="btn btn-secondary">Cancel</a>
+        <div class="entry-actions-row">
+            <div class="entry-actions-left">
+                <a href="/vendor/{{ vendor.vendor_uid }}" class="btn btn-secondary">Cancel</a>
+            </div>
+            <div class="entry-actions-right-group">
+                <button type="button" id="calendar-trigger" class="btn btn-secondary">Add Calendar Event</button>
+                <button type="submit" class="btn btn-primary">{{ submit_label }}</button>
+            </div>
         </div>
 
-        {% if mode == "create" %}
         <section id="calendar-panel" class="calendar-panel" hidden>
             <h3>Calendar Event</h3>
             <div class="form-field">
@@ -94,7 +97,6 @@
                 <button type="button" id="calendar-cancel" class="btn btn-secondary">Cancel</button>
             </div>
         </section>
-        {% endif %}
     </form>
 </section>
 
