@@ -114,7 +114,12 @@ def create_vendor(
     name: str,
     category: str | None,
     account_number: str | None,
+    name_on_account: str | None,
     portal_url: str | None,
+    portal_username: str | None,
+    phone_on_file: str | None,
+    security_pin: str | None,
+    service_location: str | None,
     vendor_notes: str | None,
     created_at: str,
     created_by: str,
@@ -124,11 +129,27 @@ def create_vendor(
             """
             INSERT INTO vendors (
                 vendor_uid, name, category, account_number,
-                portal_url, vendor_notes, created_at, created_by
+                name_on_account, portal_url, portal_username,
+                phone_on_file, security_pin, service_location,
+                vendor_notes, created_at, created_by
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (vendor_uid, name, category, account_number, portal_url, vendor_notes, created_at, created_by),
+            (
+                vendor_uid,
+                name,
+                category,
+                account_number,
+                name_on_account,
+                portal_url,
+                portal_username,
+                phone_on_file,
+                security_pin,
+                service_location,
+                vendor_notes,
+                created_at,
+                created_by,
+            ),
         )
 
 

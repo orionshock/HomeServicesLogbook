@@ -357,7 +357,16 @@ def read_root(request: Request):
 
 @app.get("/vendors/new")
 def vendor_new_form(request: Request):
-    return _render_template(request, "vendor_new.html")
+    return _render_template(
+        request,
+        "vendor_form.html",
+        {
+            "vendor": None,
+            "is_edit": False,
+            "form_action": "/vendors/new",
+            "submit_label": "Save Vendor",
+        },
+    )
 
 
 @app.post("/vendors/new")
@@ -366,7 +375,12 @@ def vendor_new_submit(
     name: str = Form(...),
     category: str = Form(""),
     account_number: str = Form(""),
+    name_on_account: str = Form(""),
     portal_url: str = Form(""),
+    portal_username: str = Form(""),
+    phone_on_file: str = Form(""),
+    security_pin: str = Form(""),
+    service_location: str = Form(""),
     vendor_notes: str = Form(""),
 ):
     actor = request.state.current_actor["actor_id"]
@@ -379,7 +393,12 @@ def vendor_new_submit(
         name=clean_name,
         category=category or None,
         account_number=account_number or None,
+        name_on_account=name_on_account or None,
         portal_url=clean_portal_url,
+        portal_username=portal_username or None,
+        phone_on_file=phone_on_file or None,
+        security_pin=security_pin or None,
+        service_location=service_location or None,
         vendor_notes=vendor_notes or None,
         created_at=now,
         created_by=actor,
@@ -489,7 +508,16 @@ def vendor_edit_form(request: Request, vendor_uid: str):
     if vendor is None:
         raise HTTPException(status_code=404, detail="Vendor not found")
 
-    return _render_template(request, "vendor_edit.html", {"vendor": vendor})
+    return _render_template(
+        request,
+        "vendor_form.html",
+        {
+            "vendor": vendor,
+            "is_edit": True,
+            "form_action": f"/vendor/{vendor_uid}/edit",
+            "submit_label": "Save Changes",
+        },
+    )
 
 
 @app.post("/vendor/{vendor_uid}/edit")

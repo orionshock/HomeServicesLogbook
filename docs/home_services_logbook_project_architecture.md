@@ -40,9 +40,8 @@ HomeServicesLogbook-Dev/
 │   ├── base.html        # Shared layout (nav, CSS, favicon)
 │   ├── home.html        # App intro page
 │   ├── vendors.html     # Vendor list (active + archived toggle)
-│   ├── vendor_new.html  # New vendor form
+│   ├── vendor_form.html # Shared new/edit vendor form page
 │   ├── vendor_detail.html  # Vendor page: details, entry form, timeline
-│   ├── vendor_edit.html    # Edit vendor reference data
 │   ├── entry_form.html     # Shared new/edit entry form page
 │   ├── 404.html         # Custom 404 page
 │   └── error.html       # Custom error page (4xx/5xx)
