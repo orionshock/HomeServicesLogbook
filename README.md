@@ -118,6 +118,35 @@ The system is intentionally **simple and utilitarian**.
 
 ---
 
+# Setup
+
+**Requirements:** Python 3.11 or later.
+
+```bash
+# 1. Create and activate a virtual environment
+python -m venv .venv
+
+# Windows
+.venv\Scripts\activate
+
+# macOS / Linux
+source .venv/bin/activate
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Start the development server
+uvicorn app.main:app --reload
+```
+
+Then open [http://127.0.0.1:8000](http://127.0.0.1:8000) in your browser.
+
+The SQLite database (`data/logbook.db`) and uploaded files (`uploads/`) are created automatically on first run.
+
+> To reset the database, stop the server and delete `data/logbook.db`.
+
+---
+
 # Technology Stack
 
 The project uses a lightweight stack designed for maintainability.

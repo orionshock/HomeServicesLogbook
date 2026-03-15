@@ -6,17 +6,25 @@
 <div class="vendor-page">
     <section class="content-section vendor-header-card">
         <div>
-            <h1>{{ vendor.name }}</h1>
+            <h1>{{ vendor.name }}{% if vendor.archived_at %} <span class="archived-badge">Archived</span>{% endif %}</h1>
             <p class="vendor-header-links">
                 <a href="/vendors">Back to Vendors</a>
                 <span aria-hidden="true">|</span>
                 <a href="/vendor/{{ vendor.vendor_uid }}/edit">Edit Vendor</a>
             </p>
         </div>
+        {% if not vendor.archived_at %}
         <form method="post" action="/vendor/{{ vendor.vendor_uid }}/archive" class="archive-form">
             <button type="submit" class="btn btn-danger">Archive Vendor</button>
         </form>
+        {% endif %}
     </section>
+
+    {% if vendor.archived_at %}
+    <div class="message-card archived-notice">
+        This vendor was archived on {{ vendor.archived_at[:10] }}. The history below is read-only.
+    </div>
+    {% endif %}
 
     <section class="content-section vendor-details-section">
         <h2>Vendor Details</h2>

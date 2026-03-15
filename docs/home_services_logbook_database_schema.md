@@ -100,12 +100,28 @@ Examples:
 
 Recommended schema:
 
-CREATE TABLE vendors ( id INTEGER PRIMARY KEY, vendor_uid TEXT UNIQUE
-NOT NULL, name TEXT NOT NULL, category TEXT, account_number TEXT,
-name_on_account TEXT, portal_url TEXT, portal_username TEXT,
-phone_on_file TEXT, security_pin TEXT, service_location TEXT,
-vendor_notes TEXT, details_json TEXT, created_at TEXT NOT NULL,
-updated_at TEXT, archived_at TEXT );
+```sql
+CREATE TABLE vendors (
+    id               INTEGER PRIMARY KEY,
+    vendor_uid       TEXT UNIQUE NOT NULL,
+    name             TEXT NOT NULL,
+    category         TEXT,
+    account_number   TEXT,
+    name_on_account  TEXT,
+    portal_url       TEXT,
+    portal_username  TEXT,
+    phone_on_file    TEXT,
+    security_pin     TEXT,
+    service_location TEXT,
+    vendor_notes     TEXT,
+    details_json     TEXT,
+    created_at       TEXT NOT NULL,
+    created_by       TEXT,
+    updated_at       TEXT,
+    updated_by       TEXT,
+    archived_at      TEXT
+);
+```
 
 ### Key fields
 
@@ -155,12 +171,24 @@ Examples of entries:
 
 Recommended schema:
 
-CREATE TABLE entries ( id INTEGER PRIMARY KEY, entry_uid TEXT UNIQUE NOT
-NULL, vendor_id INTEGER NOT NULL, entry_type TEXT NOT NULL DEFAULT
-'note', body_text TEXT, vendor_reference TEXT, rep_name TEXT, extra_json
-TEXT, created_at TEXT NOT NULL, created_by TEXT, updated_at TEXT,
-updated_by TEXT, archived_at TEXT, FOREIGN KEY (vendor_id) REFERENCES
-vendors(id) );
+```sql
+CREATE TABLE entries (
+    id               INTEGER PRIMARY KEY,
+    entry_uid        TEXT UNIQUE NOT NULL,
+    vendor_id        INTEGER NOT NULL,
+    entry_type       TEXT NOT NULL DEFAULT 'note',
+    body_text        TEXT,
+    vendor_reference TEXT,
+    rep_name         TEXT,
+    extra_json       TEXT,
+    created_at       TEXT NOT NULL,
+    created_by       TEXT,
+    updated_at       TEXT,
+    updated_by       TEXT,
+    archived_at      TEXT,
+    FOREIGN KEY (vendor_id) REFERENCES vendors(id)
+);
+```
 
 ### Important fields
 
@@ -208,54 +236,57 @@ Purpose: - metadata for uploaded files - actual files stored on disk
 
 Schema:
 
-CREATE TABLE attachments ( id INTEGER PRIMARY KEY, entry_id INTEGER NOT
-NULL, original_filename TEXT NOT NULL, stored_filename TEXT NOT NULL,
-relative_path TEXT NOT NULL, mime_type TEXT, file_size INTEGER,
-checksum_sha256 TEXT, created_at TEXT NOT NULL, FOREIGN KEY (entry_id)
-REFERENCES entries(id) );
+```sql
+CREATE TABLE attachments (
+    id                INTEGER PRIMARY KEY,
+    attachment_uid    TEXT NOT NULL UNIQUE,
+    entry_id          INTEGER NOT NULL,
+    original_filename TEXT NOT NULL,
+    stored_filename   TEXT NOT NULL,
+    relative_path     TEXT NOT NULL,
+    mime_type         TEXT,
+    file_size         INTEGER,
+    checksum_sha256   TEXT,
+    created_at        TEXT NOT NULL,
+    created_by        TEXT,
+    FOREIGN KEY (entry_id) REFERENCES entries(id)
+);
+```
 
 ### Fields
 
-original_filename\
-Original upload filename.
+`attachment_uid`
+Public identifier for attachments, used in download URLs.
 
-stored_filename\
-Safe generated filename.
+Example: `20260311-164233-a84f19`
 
-Example:
+`original_filename`
+Original upload filename (metadata only — not used in storage path).
 
-20260311-164233-a84f19.pdf
+`stored_filename`
+Safe generated filename used on disk.
 
-relative_path\
+Example: `20260311-164233-a84f19.pdf`
+
+`relative_path`
 Filesystem path relative to project root.
 
-Example:
+Example: `uploads/2026/03/20260311-164233-a84f19.pdf`
 
-uploads/2026/03/20260311-164233-a84f19.pdf
-
-checksum_sha256\
+`checksum_sha256`
 Optional SHA-256 checksum for integrity verification.
 
 ------------------------------------------------------------------------
 
 # Recommended Indexes
 
-Vendor lookup
-
-CREATE UNIQUE INDEX idx_vendors_vendor_uid ON vendors (vendor_uid);
-
-Entry lookup
-
-CREATE UNIQUE INDEX idx_entries_entry_uid ON entries (entry_uid);
-
-Vendor timeline
-
-CREATE INDEX idx_entries_vendor_created_at ON entries (vendor_id,
-created_at DESC);
-
-Attachment lookup
-
-CREATE INDEX idx_attachments_entry_id ON attachments (entry_id);
+```sql
+CREATE UNIQUE INDEX idx_vendors_vendor_uid    ON vendors (vendor_uid);
+CREATE UNIQUE INDEX idx_entries_entry_uid     ON entries (entry_uid);
+CREATE INDEX        idx_entries_vendor_created_at ON entries (vendor_id, created_at DESC);
+CREATE INDEX        idx_attachments_entry_id  ON attachments (entry_id);
+CREATE UNIQUE INDEX idx_attachments_attachment_uid ON attachments (attachment_uid);
+```
 
 ------------------------------------------------------------------------
 
