@@ -106,6 +106,67 @@ h2 {
     margin: 0 0 14px;
 }
 
+    .vendor-search-bar {
+        margin: 0 0 16px;
+    }
+
+    .vendor-search-bar input[type="text"] {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 9px 10px;
+        background: #fff;
+        font: inherit;
+        color: inherit;
+    }
+
+    .vendor-category-section {
+        margin-bottom: 12px;
+    }
+
+    .vendor-category-header {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        cursor: pointer;
+        user-select: none;
+        font-size: 1.05rem;
+        font-weight: 600;
+        margin: 0 0 4px;
+        padding: 6px 0;
+        border-bottom: 1px solid var(--line);
+        color: var(--text);
+    }
+
+    .vendor-category-header:hover {
+        color: var(--accent);
+    }
+
+    .category-toggle-icon {
+        font-size: 0.8rem;
+        width: 12px;
+        text-align: center;
+        flex-shrink: 0;
+    }
+
+    .is-collapsed .vendor-category-list {
+        display: none;
+    }
+
+    .vendor-category-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .vendor-item {
+        padding: 7px 4px;
+    }
+
+    .vendor-item:last-child {
+        border-bottom: none;
+    }
+
 .details-list {
     margin: 0;
     padding-left: 20px;

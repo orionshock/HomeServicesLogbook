@@ -14,16 +14,48 @@
 </div>
 
 {% if vendors %}
-<ul>
-    {% for vendor in vendors %}
-    <li>
-        <a href="/vendor/{{ vendor.vendor_uid }}">{{ vendor.name }}</a>
-        {% if vendor.category %} — {{ vendor.category }}{% endif %}
-        {% if vendor.archived_at %} (Archived){% endif %}
-    </li>
-    {% endfor %}
-</ul>
+<div class="vendor-search-bar">
+    <input type="text" id="vendorSearch" placeholder="Filter vendors…" autocomplete="off">
+</div>
+
+{% for grouper, group in (vendors | selectattr("category") | list) | groupby("category") %}
+<section class="vendor-category-section" data-category="{{ grouper }}">
+    <h2 class="vendor-category-header">
+        <span class="category-toggle-icon">▾</span>{{ grouper }}
+    </h2>
+    <ul class="vendor-category-list">
+        {% for vendor in group %}
+        <li class="vendor-item" data-name="{{ vendor.name }}" data-category="{{ grouper }}">
+            <a href="/vendor/{{ vendor.vendor_uid }}">{{ vendor.name }}</a>
+            {% if vendor.archived_at %}<span class="archived-badge">Archived</span>{% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endfor %}
+
+{% set uncategorized = vendors | rejectattr("category") | list %}
+{% if uncategorized %}
+<section class="vendor-category-section" data-category="Uncategorized">
+    <h2 class="vendor-category-header">
+        <span class="category-toggle-icon">▾</span>Uncategorized
+    </h2>
+    <ul class="vendor-category-list">
+        {% for vendor in uncategorized %}
+        <li class="vendor-item" data-name="{{ vendor.name }}" data-category="Uncategorized">
+            <a href="/vendor/{{ vendor.vendor_uid }}">{{ vendor.name }}</a>
+            {% if vendor.archived_at %}<span class="archived-badge">Archived</span>{% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+
 {% else %}
 <p>No vendors yet. Add your first vendor to get started.</p>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/vendors.js"></script>
 {% endblock %}
