@@ -1,0 +1,44 @@
+/* TEMP DEBUG LAYOUT CSS: remove after workflow/layout redesign */
+.app-shell {
+    border: 2px dashed #6b7280;
+    margin: 8px;
+    padding: 8px;
+}
+
+.app-header {
+    border: 2px solid #2563eb;
+    padding: 8px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.app-nav {
+    border: 1px solid #60a5fa;
+    padding: 6px;
+}
+
+.app-actor {
+    border: 1px solid #f59e0b;
+    padding: 6px;
+    font-size: 0.95rem;
+    white-space: nowrap;
+}
+
+.app-main {
+    border: 2px solid #10b981;
+    padding: 10px;
+}
+
+.content-section {
+    border: 1px solid #a855f7;
+    padding: 8px;
+    margin-bottom: 10px;
+}
+
+.timeline-entry {
+    border: 1px dashed #ef4444;
+    padding: 8px;
+}

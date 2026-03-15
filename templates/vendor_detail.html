@@ -5,9 +5,12 @@
 {% block content %}
 <h1>{{ vendor.name }}</h1>
 
-<p><a href="/vendors">Back to Vendors</a></p>
+<p>
+    <a href="/vendors">Back to Vendors</a> |
+    <a href="/vendor/{{ vendor.vendor_uid }}/edit">Edit Vendor</a>
+</p>
 
-<section>
+<section class="content-section vendor-details-section">
     <h2>Vendor Details</h2>
     <ul>
         {% if vendor.category %}
@@ -45,13 +48,13 @@
 </section>
 
 {% if vendor.vendor_notes %}
-<section>
+<section class="content-section vendor-notes-section">
     <h2>Vendor Notes</h2>
     <p>{{ vendor.vendor_notes }}</p>
 </section>
 {% endif %}
 
-<section>
+<section class="content-section new-entry-section">
     <h2>New Entry</h2>
     <form id="entry-form" method="post" action="/vendor/{{ vendor.vendor_uid }}/entries" enctype="multipart/form-data">
         <div>
@@ -76,12 +79,12 @@
     </form>
 </section>
 
-<section>
+<section class="content-section entry-timeline-section">
     <h2>Entry Timeline</h2>
 
     {% if entries %}
     {% for entry in entries %}
-    <article>
+    <article class="timeline-entry">
         <p><strong>Created:</strong> {{ entry.created_at }}</p>
 
         {% if entry.body_text %}
@@ -118,47 +121,5 @@
     {% endif %}
 </section>
 
-<script>
-    (function () {
-        var form = document.getElementById("entry-form");
-        var fileInput = document.getElementById("attachment");
-        if (!form || !fileInput) {
-            return;
-        }
-
-        function hasExtension(fileName) {
-            var base = (fileName || "").split(/[\\/]/).pop();
-            var lastDot = base.lastIndexOf(".");
-            return lastDot > 0 && lastDot < base.length - 1;
-        }
-
-        function validateFileInput() {
-            if (!fileInput.files || fileInput.files.length === 0) {
-                fileInput.setCustomValidity("");
-                return true;
-            }
-
-            var selectedName = fileInput.files[0].name;
-            if (!hasExtension(selectedName)) {
-                fileInput.setCustomValidity("Attached file must include an extension, such as .pdf or .jpg.");
-                return false;
-            }
-
-            fileInput.setCustomValidity("");
-            return true;
-        }
-
-        fileInput.addEventListener("change", function () {
-            validateFileInput();
-            fileInput.reportValidity();
-        });
-
-        form.addEventListener("submit", function (event) {
-            if (!validateFileInput()) {
-                event.preventDefault();
-                fileInput.reportValidity();
-            }
-        });
-    })();
-</script>
+<script src="/static/js/vendor_detail.js"></script>
 {% endblock %}

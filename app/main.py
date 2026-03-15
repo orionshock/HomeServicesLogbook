@@ -29,6 +29,15 @@ def _make_attachment_uid() -> str:
     return uuid.uuid4().hex
 
 
+def _resolve_current_actor(_request: Request) -> dict[str, str]:
+    # Temporary MVP actor resolution. Replace with real auth integration later.
+    return {
+        "actor_id": "devUser",
+        "display_name": "devUser",
+        "source": "hardcoded",
+    }
+
+
 def _now_utc() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -61,14 +70,30 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 templates = Jinja2Templates(directory="templates")
 
 
+def _render_template(request: Request, template_name: str, context: dict | None = None):
+    payload = {
+        "request": request,
+        "current_actor": getattr(request.state, "current_actor", _resolve_current_actor(request)),
+    }
+    if context:
+        payload.update(context)
+    return templates.TemplateResponse(template_name, payload)
+
+
+@app.middleware("http")
+async def actor_context_middleware(request: Request, call_next):
+    request.state.current_actor = _resolve_current_actor(request)
+    return await call_next(request)
+
+
 @app.get("/")
 def read_root(request: Request):
-    return templates.TemplateResponse("home.html", {"request": request})
+    return _render_template(request, "home.html")
 
 
 @app.get("/vendors/new")
 def vendor_new_form(request: Request):
-    return templates.TemplateResponse("vendor_new.html", {"request": request})
+    return _render_template(request, "vendor_new.html")
 
 
 @app.post("/vendors/new")
@@ -80,13 +105,14 @@ def vendor_new_submit(
     portal_url: str = Form(""),
     vendor_notes: str = Form(""),
 ):
+    actor = request.state.current_actor["actor_id"]
     vendor_uid = _make_vendor_uid(name)
     now = _now_utc()
     with get_connection() as conn:
         conn.execute(
             """
-            INSERT INTO vendors (vendor_uid, name, category, account_number, portal_url, vendor_notes, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO vendors (vendor_uid, name, category, account_number, portal_url, vendor_notes, created_at, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 vendor_uid,
@@ -96,6 +122,7 @@ def vendor_new_submit(
                 portal_url or None,
                 vendor_notes or None,
                 now,
+                actor,
             ),
         )
     return RedirectResponse(url=f"/vendor/{vendor_uid}", status_code=303)
@@ -107,9 +134,7 @@ def vendor_list(request: Request):
         vendors = conn.execute(
             "SELECT * FROM vendors WHERE archived_at IS NULL ORDER BY name"
         ).fetchall()
-    return templates.TemplateResponse(
-        "vendors.html", {"request": request, "vendors": vendors}
-    )
+    return _render_template(request, "vendors.html", {"vendors": vendors})
 
 
 @app.get("/vendor/{vendor_uid}")
@@ -150,15 +175,93 @@ def vendor_detail(request: Request, vendor_uid: str):
     if vendor is None:
         raise HTTPException(status_code=404, detail="Vendor not found")
 
-    return templates.TemplateResponse(
+    return _render_template(
+        request,
         "vendor_detail.html",
         {
-            "request": request,
             "vendor": vendor,
             "entries": entries,
             "attachments_by_entry": attachments_by_entry,
         },
     )
+
+
+@app.get("/vendor/{vendor_uid}/edit")
+def vendor_edit_form(request: Request, vendor_uid: str):
+    with get_connection() as conn:
+        vendor = conn.execute(
+            "SELECT * FROM vendors WHERE vendor_uid = ?",
+            (vendor_uid,),
+        ).fetchone()
+
+    if vendor is None:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    return _render_template(request, "vendor_edit.html", {"vendor": vendor})
+
+
+@app.post("/vendor/{vendor_uid}/edit")
+def vendor_edit_submit(
+    request: Request,
+    vendor_uid: str,
+    name: str = Form(...),
+    category: str = Form(""),
+    account_number: str = Form(""),
+    name_on_account: str = Form(""),
+    portal_url: str = Form(""),
+    portal_username: str = Form(""),
+    phone_on_file: str = Form(""),
+    security_pin: str = Form(""),
+    service_location: str = Form(""),
+    vendor_notes: str = Form(""),
+):
+    actor = request.state.current_actor["actor_id"]
+
+    with get_connection() as conn:
+        exists = conn.execute(
+            "SELECT id FROM vendors WHERE vendor_uid = ?",
+            (vendor_uid,),
+        ).fetchone()
+
+        if exists is None:
+            raise HTTPException(status_code=404, detail="Vendor not found")
+
+        conn.execute(
+            """
+            UPDATE vendors
+            SET
+                name = ?,
+                category = ?,
+                account_number = ?,
+                name_on_account = ?,
+                portal_url = ?,
+                portal_username = ?,
+                phone_on_file = ?,
+                security_pin = ?,
+                service_location = ?,
+                vendor_notes = ?,
+                updated_at = ?,
+                updated_by = ?
+            WHERE vendor_uid = ?
+            """,
+            (
+                name,
+                category or None,
+                account_number or None,
+                name_on_account or None,
+                portal_url or None,
+                portal_username or None,
+                phone_on_file or None,
+                security_pin or None,
+                service_location or None,
+                vendor_notes or None,
+                _now_utc(),
+                actor,
+                vendor_uid,
+            ),
+        )
+
+    return RedirectResponse(url=f"/vendor/{vendor_uid}", status_code=303)
 
 
 @app.get("/attachments/{attachment_uid}")
@@ -192,12 +295,14 @@ def attachment_download(attachment_uid: str):
 
 @app.post("/vendor/{vendor_uid}/entries")
 def create_vendor_entry(
+    request: Request,
     vendor_uid: str,
     body_text: str = Form(""),
     vendor_reference: str = Form(""),
     rep_name: str = Form(""),
     attachment: UploadFile | None = File(None),
 ):
+    actor = request.state.current_actor["actor_id"]
     with get_connection() as conn:
         vendor = conn.execute(
             "SELECT id FROM vendors WHERE vendor_uid = ?",
@@ -215,9 +320,10 @@ def create_vendor_entry(
                 body_text,
                 vendor_reference,
                 rep_name,
+                created_by,
                 created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 _make_entry_uid(),
@@ -225,6 +331,7 @@ def create_vendor_entry(
                 body_text or None,
                 vendor_reference or None,
                 rep_name or None,
+                actor,
                 _now_utc(),
             ),
         )
@@ -267,9 +374,10 @@ def create_vendor_entry(
                     relative_path,
                     mime_type,
                     file_size,
+                    created_by,
                     created_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     _make_attachment_uid(),
@@ -279,6 +387,7 @@ def create_vendor_entry(
                     str(disk_path).replace("\\", "/"),
                     attachment.content_type,
                     len(file_bytes),
+                    actor,
                     _now_utc(),
                 ),
             )

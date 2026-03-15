@@ -12,6 +12,8 @@ def get_connection() -> sqlite3.Connection:
 
 def init_db() -> None:
     with get_connection() as conn:
+        # Dev mode: schema changes are applied by recreating data/logbook.db.
+        # Do not add migration/backfill logic here.
         conn.executescript("""
             CREATE TABLE IF NOT EXISTS vendors (
                 id              INTEGER PRIMARY KEY,
@@ -28,7 +30,9 @@ def init_db() -> None:
                 vendor_notes    TEXT,
                 details_json    TEXT,
                 created_at      TEXT NOT NULL,
+                created_by      TEXT,
                 updated_at      TEXT,
+                updated_by      TEXT,
                 archived_at     TEXT
             );
 
@@ -60,6 +64,7 @@ def init_db() -> None:
                 file_size         INTEGER,
                 checksum_sha256   TEXT,
                 created_at        TEXT NOT NULL,
+                created_by        TEXT,
                 FOREIGN KEY (entry_id) REFERENCES entries(id)
             );
 

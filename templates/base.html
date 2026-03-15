@@ -5,13 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Home Services Logbook{% endblock %}</title>
     <link rel="icon" type="image/png" href="/static/favicon.png">
+    <link rel="stylesheet" href="/static/css/app.css">
 </head>
-<body>
-    <nav>
-        <a href="/">Home</a> |
-        <a href="/vendors">Vendors</a>
-    </nav>
-    <main>
+<body class="app-shell">
+    <header class="app-header">
+        <nav class="app-nav">
+            <a href="/">Home</a> |
+            <a href="/vendors">Vendors</a>
+        </nav>
+        <div class="app-actor">
+            Current Actor: {{ current_actor.display_name }}
+        </div>
+    </header>
+    <main class="app-main">
         {% block content %}{% endblock %}
     </main>
 </body>
