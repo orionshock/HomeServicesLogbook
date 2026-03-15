@@ -287,6 +287,7 @@ def vendor_archive(request: Request, vendor_uid: str):
         if exists is None:
             raise HTTPException(status_code=404, detail="Vendor not found")
 
+        now = _now_utc()
         conn.execute(
             """
             UPDATE vendors
@@ -297,8 +298,8 @@ def vendor_archive(request: Request, vendor_uid: str):
             WHERE vendor_uid = ?
             """,
             (
-                _now_utc(),
-                _now_utc(),
+                now,
+                now,
                 actor,
                 vendor_uid,
             ),

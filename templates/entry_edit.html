@@ -14,21 +14,21 @@
 
 <section class="content-section entry-edit-section">
     <form method="post" action="/entry/{{ entry.entry_uid }}/edit">
-        <div>
-            <label for="body_text">Entry</label><br>
-            <textarea id="body_text" name="body_text" rows="8" cols="70">{{ entry.body_text or '' }}</textarea>
+        <div class="form-field">
+            <label for="body_text">Entry</label>
+            <textarea id="body_text" name="body_text" rows="8">{{ entry.body_text or '' }}</textarea>
         </div>
-        <div>
-            <label for="vendor_reference">Vendor Reference</label><br>
+        <div class="form-field">
+            <label for="vendor_reference">Vendor Reference</label>
             <input type="text" id="vendor_reference" name="vendor_reference" value="{{ entry.vendor_reference or '' }}">
         </div>
-        <div>
-            <label for="rep_name">Rep Name</label><br>
+        <div class="form-field">
+            <label for="rep_name">Rep Name</label>
             <input type="text" id="rep_name" name="rep_name" value="{{ entry.rep_name or '' }}">
         </div>
-        <div>
-            <button type="submit">Save Entry Changes</button>
-            <a href="/vendor/{{ entry.vendor_uid }}">Cancel</a>
+        <div class="entry-actions">
+            <button type="submit" class="btn btn-primary">Save Entry Changes</button>
+            <a href="/vendor/{{ entry.vendor_uid }}" class="btn btn-secondary">Cancel</a>
         </div>
     </form>
 </section>

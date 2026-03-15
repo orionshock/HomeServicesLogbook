@@ -174,12 +174,14 @@ h2 {
 }
 
 .btn {
+    display: inline-block;
     border: 1px solid transparent;
     border-radius: 8px;
     padding: 8px 12px;
     font: inherit;
     font-weight: 600;
     cursor: pointer;
+    text-decoration: none;
 }
 
 .btn:disabled {
