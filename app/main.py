@@ -361,6 +361,11 @@ def vendor_new_form(request: Request):
         request,
         "vendor_form.html",
         {
+            "breadcrumbs": [
+                {"label": "Home", "url": "/"},
+                {"label": "Vendors", "url": "/vendors"},
+                {"label": "New Vendor", "url": None},
+            ],
             "vendor": None,
             "is_edit": False,
             "form_action": "/vendors/new",
@@ -418,7 +423,14 @@ def vendor_list(request: Request, show_archived: int | None = None):
     response = _render_template(
         request,
         "vendors.html",
-        {"vendors": vendors, "show_archived": include_archived},
+        {
+            "breadcrumbs": [
+                {"label": "Home", "url": "/"},
+                {"label": "Vendors", "url": None},
+            ],
+            "vendors": vendors,
+            "show_archived": include_archived,
+        },
     )
 
     if query_has_preference:
@@ -469,6 +481,11 @@ def vendor_detail(request: Request, vendor_uid: str):
         request,
         "vendor_detail.html",
         {
+            "breadcrumbs": [
+                {"label": "Home", "url": "/"},
+                {"label": "Vendors", "url": "/vendors"},
+                {"label": vendor["name"], "url": None},
+            ],
             "vendor": vendor,
             "entries": entries,
             "attachments_by_entry": attachments_by_entry,
@@ -497,6 +514,12 @@ def vendor_entry_new_form(request: Request, vendor_uid: str):
         request,
         "entry_form.html",
         {
+            "breadcrumbs": [
+                {"label": "Home", "url": "/"},
+                {"label": "Vendors", "url": "/vendors"},
+                {"label": vendor["name"], "url": f"/vendor/{vendor_uid}"},
+                {"label": "New Entry", "url": None},
+            ],
             "mode": "create",
             "vendor": vendor,
             "entry": None,
@@ -519,6 +542,12 @@ def vendor_edit_form(request: Request, vendor_uid: str):
         request,
         "vendor_form.html",
         {
+            "breadcrumbs": [
+                {"label": "Home", "url": "/"},
+                {"label": "Vendors", "url": "/vendors"},
+                {"label": vendor["name"], "url": f"/vendor/{vendor_uid}"},
+                {"label": "Edit", "url": None},
+            ],
             "vendor": vendor,
             "is_edit": True,
             "form_action": f"/vendor/{vendor_uid}/edit",
@@ -605,6 +634,12 @@ def entry_edit_form(request: Request, entry_uid: str):
         request,
         "entry_form.html",
         {
+            "breadcrumbs": [
+                {"label": "Home", "url": "/"},
+                {"label": "Vendors", "url": "/vendors"},
+                {"label": vendor["name"], "url": f"/vendor/{vendor['vendor_uid']}"},
+                {"label": f"Edit Entry - {entry_uid}", "url": None},
+            ],
             "mode": "edit",
             "vendor": vendor,
             "entry": entry,
