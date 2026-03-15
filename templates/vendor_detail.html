@@ -3,134 +3,144 @@
 {% block title %}{{ vendor.name }} — Home Services Logbook{% endblock %}
 
 {% block content %}
-<h1>{{ vendor.name }}</h1>
-
-<p>
-    <a href="/vendors">Back to Vendors</a> |
-    <a href="/vendor/{{ vendor.vendor_uid }}/edit">Edit Vendor</a>
-</p>
-
-<form method="post" action="/vendor/{{ vendor.vendor_uid }}/archive">
-    <button type="submit">Archive Vendor</button>
-</form>
-
-<section class="content-section vendor-details-section">
-    <h2>Vendor Details</h2>
-    <ul>
-        {% if vendor.category %}
-        <li><strong>Category:</strong> {{ vendor.category }}</li>
-        {% endif %}
-
-        {% if vendor.account_number %}
-        <li><strong>Account Number:</strong> {{ vendor.account_number }}</li>
-        {% endif %}
-
-        {% if vendor.name_on_account %}
-        <li><strong>Name on Account:</strong> {{ vendor.name_on_account }}</li>
-        {% endif %}
-
-        {% if vendor.portal_url %}
-        <li><strong>Portal URL:</strong> <a href="{{ vendor.portal_url }}" target="_blank" rel="noopener noreferrer">{{ vendor.portal_url }}</a></li>
-        {% endif %}
-
-        {% if vendor.portal_username %}
-        <li><strong>Portal Username:</strong> {{ vendor.portal_username }}</li>
-        {% endif %}
-
-        {% if vendor.phone_on_file %}
-        <li><strong>Phone on File:</strong> {{ vendor.phone_on_file }}</li>
-        {% endif %}
-
-        {% if vendor.security_pin %}
-        <li><strong>Security PIN:</strong> {{ vendor.security_pin }}</li>
-        {% endif %}
-
-        {% if vendor.service_location %}
-        <li><strong>Service Location:</strong> {{ vendor.service_location }}</li>
-        {% endif %}
-    </ul>
-</section>
-
-{% if vendor.vendor_notes %}
-<section class="content-section vendor-notes-section">
-    <h2>Vendor Notes</h2>
-    <p>{{ vendor.vendor_notes }}</p>
-</section>
-{% endif %}
-
-<section class="content-section new-entry-section">
-    <h2>New Entry</h2>
-    <form id="entry-form" method="post" action="/vendor/{{ vendor.vendor_uid }}/entries" enctype="multipart/form-data">
+<div class="vendor-page">
+    <section class="content-section vendor-header-card">
         <div>
-            <label for="body_text">Entry</label><br>
-            <textarea id="body_text" name="body_text" rows="6" cols="70"></textarea>
+            <h1>{{ vendor.name }}</h1>
+            <p class="vendor-header-links">
+                <a href="/vendors">Back to Vendors</a>
+                <span aria-hidden="true">|</span>
+                <a href="/vendor/{{ vendor.vendor_uid }}/edit">Edit Vendor</a>
+            </p>
         </div>
-        <div>
-            <label for="vendor_reference">Vendor Reference (optional)</label><br>
-            <input type="text" id="vendor_reference" name="vendor_reference">
-        </div>
-        <div>
-            <label for="rep_name">Rep Name (optional)</label><br>
-            <input type="text" id="rep_name" name="rep_name">
-        </div>
-        <div>
-            <label for="attachment">Attach Document (optional)</label><br>
-            <input type="file" id="attachment" name="attachment">
-        </div>
-        <div>
-            <button type="submit">Save Entry</button>
-        </div>
-    </form>
-</section>
+        <form method="post" action="/vendor/{{ vendor.vendor_uid }}/archive" class="archive-form">
+            <button type="submit" class="btn btn-danger">Archive Vendor</button>
+        </form>
+    </section>
 
-<section class="content-section entry-timeline-section">
-    <h2>Entry Timeline</h2>
+    <section class="content-section vendor-details-section">
+        <h2>Vendor Details</h2>
+        <ul class="details-list">
+            {% if vendor.category %}
+            <li><strong>Category:</strong> {{ vendor.category }}</li>
+            {% endif %}
 
-    {% if entries %}
-    {% for entry in entries %}
-    <article class="timeline-entry">
-        <p><strong>Created:</strong> {{ entry.created_at }}</p>
-        {% if entry.updated_at %}
-        <p><strong>Edited:</strong> {{ entry.updated_at }}</p>
-        {% endif %}
+            {% if vendor.account_number %}
+            <li><strong>Account Number:</strong> {{ vendor.account_number }}</li>
+            {% endif %}
 
-        {% if entry.body_text %}
-        <p>{{ entry.body_text }}</p>
-        {% endif %}
+            {% if vendor.name_on_account %}
+            <li><strong>Name on Account:</strong> {{ vendor.name_on_account }}</li>
+            {% endif %}
 
-        {% if entry.vendor_reference %}
-        <p><strong>Vendor Reference:</strong> {{ entry.vendor_reference }}</p>
-        {% endif %}
+            {% if vendor.portal_url %}
+            <li><strong>Portal URL:</strong> <a href="{{ vendor.portal_url }}" target="_blank" rel="noopener noreferrer">{{ vendor.portal_url }}</a></li>
+            {% endif %}
 
-        {% if entry.rep_name %}
-        <p><strong>Rep Name:</strong> {{ entry.rep_name }}</p>
-        {% endif %}
+            {% if vendor.portal_username %}
+            <li><strong>Portal Username:</strong> {{ vendor.portal_username }}</li>
+            {% endif %}
 
-        <p>
-            <small><a href="/entry/{{ entry.entry_uid }}/edit">Edit Entry</a></small>
-        </p>
+            {% if vendor.phone_on_file %}
+            <li><strong>Phone on File:</strong> {{ vendor.phone_on_file }}</li>
+            {% endif %}
 
-        {% set entry_attachments = attachments_by_entry.get(entry.id, []) %}
-        {% if entry_attachments %}
-        <p><strong>Attachments:</strong></p>
-        <ul>
-            {% for attachment in entry_attachments %}
-            <li>
-                <a href="/attachments/{{ attachment.attachment_uid }}">{{ attachment.original_filename }}</a>
-            </li>
-            {% endfor %}
+            {% if vendor.security_pin %}
+            <li><strong>Security PIN:</strong> {{ vendor.security_pin }}</li>
+            {% endif %}
+
+            {% if vendor.service_location %}
+            <li><strong>Service Location:</strong> {{ vendor.service_location }}</li>
+            {% endif %}
         </ul>
-        {% endif %}
-    </article>
+    </section>
 
-    {% if not loop.last %}
-    <hr>
+    {% if vendor.vendor_notes %}
+    <section class="content-section vendor-notes-section">
+        <h2>Vendor Notes</h2>
+        <p>{{ vendor.vendor_notes }}</p>
+    </section>
     {% endif %}
-    {% endfor %}
-    {% else %}
-    <p>No entries yet. Add your first logbook entry above.</p>
-    {% endif %}
-</section>
+
+    <div class="vendor-main-grid">
+        <section class="content-section new-entry-section">
+            <h2>New Entry</h2>
+            <form id="entry-form" method="post" action="/vendor/{{ vendor.vendor_uid }}/entries" enctype="multipart/form-data">
+                <div class="form-field">
+                    <label for="body_text">Entry</label>
+                    <textarea id="body_text" name="body_text" rows="8"></textarea>
+                </div>
+                <div class="form-field">
+                    <label for="vendor_reference">Vendor Reference (optional)</label>
+                    <input type="text" id="vendor_reference" name="vendor_reference">
+                </div>
+                <div class="form-field">
+                    <label for="rep_name">Rep Name (optional)</label>
+                    <input type="text" id="rep_name" name="rep_name">
+                </div>
+                <div class="form-field attachment-field">
+                    <label for="attachment">Attach Document (optional)</label>
+                    <input type="file" id="attachment" name="attachment">
+                    <p id="attachment-name" class="attachment-name">No file selected</p>
+                </div>
+                <div class="entry-actions">
+                    <button type="submit" class="btn btn-primary">Save Entry</button>
+                    <button type="button" id="attach-trigger" class="btn btn-secondary">Attach Document</button>
+                    <button type="button" class="btn btn-secondary" disabled title="Calendar export is added in Phase 15">Add Calendar Event</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="content-section entry-timeline-section">
+            <h2>Entry Timeline</h2>
+
+            {% if entries %}
+            {% for entry in entries %}
+            <article class="timeline-entry">
+                <p class="entry-meta"><strong>Created:</strong> {{ entry.created_at|replace("T", " ")|replace("Z", " UTC") }}</p>
+                {% if entry.updated_at %}
+                <p class="entry-meta"><strong>Edited:</strong> {{ entry.updated_at|replace("T", " ")|replace("Z", " UTC") }}</p>
+                {% endif %}
+
+                {% if entry.body_text %}
+                <p>{{ entry.body_text }}</p>
+                {% endif %}
+
+                {% if entry.vendor_reference %}
+                <p><strong>Vendor Reference:</strong> {{ entry.vendor_reference }}</p>
+                {% endif %}
+
+                {% if entry.rep_name %}
+                <p><strong>Rep Name:</strong> {{ entry.rep_name }}</p>
+                {% endif %}
+
+                <p>
+                    <small><a href="/entry/{{ entry.entry_uid }}/edit">Edit Entry</a></small>
+                </p>
+
+                {% set entry_attachments = attachments_by_entry.get(entry.id, []) %}
+                {% if entry_attachments %}
+                <p><strong>Attachments:</strong></p>
+                <ul>
+                    {% for attachment in entry_attachments %}
+                    <li>
+                        <a href="/attachments/{{ attachment.attachment_uid }}">{{ attachment.original_filename }}</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </article>
+
+            {% if not loop.last %}
+            <hr>
+            {% endif %}
+            {% endfor %}
+            {% else %}
+            <p>No entries yet. Add your first logbook entry above.</p>
+            {% endif %}
+        </section>
+    </div>
+</div>
 
 <script src="/static/js/vendor_detail.js"></script>
 {% endblock %}
