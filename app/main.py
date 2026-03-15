@@ -158,6 +158,10 @@ def _normalize_portal_url(value: str) -> str | None:
     if not normalized:
         return None
 
+    # Allow common user input like "example.com" by defaulting to HTTPS.
+    if "://" not in normalized:
+        normalized = f"https://{normalized}"
+
     parsed = urlparse(normalized)
     if parsed.scheme.lower() not in {"http", "https"}:
         raise HTTPException(
@@ -165,7 +169,7 @@ def _normalize_portal_url(value: str) -> str | None:
             detail="Portal URL must start with http:// or https://",
         )
 
-    if not parsed.netloc:
+    if not parsed.netloc or parsed.hostname is None:
         raise HTTPException(
             status_code=400,
             detail="Portal URL must include a valid host",
