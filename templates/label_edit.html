@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Label - Home Services Logbook{% endblock %}
+
+{% block content %}
+<h1>Edit Label</h1>
+
+<section class="content-section">
+    <form method="post" action="{{ form_action }}">
+        <div class="form-field">
+            <label for="name">Label Name *</label>
+            <input type="text" id="name" name="name" required value="{{ label.name }}">
+        </div>
+
+        <div class="form-field">
+            <label for="color">Color (optional)</label>
+            <input type="color" id="color" name="color" value="{{ label.color or '#000000' }}">
+        </div>
+
+        <div class="entry-actions">
+            <button type="submit" class="btn btn-primary">Save Label</button>
+            <a href="/labels" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

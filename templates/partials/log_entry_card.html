@@ -38,6 +38,17 @@
     <p class="entry-meta"><strong>Attachments:</strong> {{ log_entry_attachments|length }}</p>
     {% endif %}
 
+    {% if log_entry_labels %}
+    <div class="label-chip-list">
+        {% for label in log_entry_labels %}
+        <span class="label-chip">
+            <span class="label-chip-dot"{% if label.color %} style="background-color: {{ label.color }};"{% endif %}></span>
+            <span class="label-chip-text">{{ label.name }}</span>
+        </span>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     {% if is_current_entry is defined and is_current_entry %}
     <p><small><span class="current-entry-badge">Editing</span></small></p>
     {% else %}

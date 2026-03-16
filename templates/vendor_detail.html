@@ -28,6 +28,7 @@
         {% set log_entry = entry %}
         {% set log_mode = "full" %}
         {% set log_entry_attachments = attachments_by_entry.get(entry.id, []) %}
+        {% set log_entry_labels = labels_by_entry.get(entry.id, []) %}
         {% include "partials/log_entry_card.html" %}
         {% endfor %}
         </div>

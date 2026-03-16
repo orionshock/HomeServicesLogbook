@@ -247,9 +247,8 @@
   }
 
   function buildVendorPayload(vendorName, vendorLabel, index) {
-    return new URLSearchParams({
+    const params = new URLSearchParams({
       vendor_name: vendorName,
-      vendor_label: vendorLabel,
       vendor_account_number: `${randInt(1000, 9999)}-${randomDigits(6)}`,
       vendor_portal_url: randomPortalUrl(vendorName, vendorLabel),
       vendor_portal_username: randomPortalUsername(),
@@ -257,6 +256,8 @@
       vendor_address: randomStreetAddress(),
       vendor_notes: `Seeded vendor ${index + 1}. Primary label: ${vendorLabel}. Added for UI testing and route exercise.`,
     });
+    params.append("new_label_names", vendorLabel);
+    return params;
   }
 
   function buildEntryPayload(vendorName, vendorLabel, entryIndex) {
@@ -275,12 +276,16 @@
       pick(NOTE_CLOSERS),
     ].filter(Boolean).join(" ");
 
-    return new URLSearchParams({
+    const params = new URLSearchParams({
       entry_title: title,
       entry_interaction_at: randomPastUtcIso(),
       entry_rep_name: rep,
       entry_body_text: body,
     });
+    if (entryIndex % 4 === 0) {
+      params.append("new_label_names", vendorLabel);
+    }
+    return params;
   }
 
   async function postForm(url, body) {

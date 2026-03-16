@@ -19,11 +19,16 @@
 </p>
 
 <section class="content-section">
-    <form method="post" action="{{ form_action }}">
+    <form method="post" action="{{ form_action }}" autocomplete="off">
         <div class="form-field">
             <label for="vendor_name">Vendor Name *</label>
             <input type="text" id="vendor_name" name="vendor_name" required value="{% if vendor %}{{ vendor.vendor_name or '' }}{% endif %}">
         </div>
+
+        {% set field_name_label_uids = "label_uids" %}
+        {% set field_name_new_label_names = "new_label_names" %}
+        {% include "partials/label_picker.html" %}
+
         <div class="form-field">
             <label for="vendor_account_number">Account Number</label>
             <input type="text" id="vendor_account_number" name="vendor_account_number" value="{% if vendor %}{{ vendor.vendor_account_number or '' }}{% endif %}">
@@ -58,4 +63,8 @@
         </div>
     </form>
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/labels.js"></script>
 {% endblock %}

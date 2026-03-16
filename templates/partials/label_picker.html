@@ -1,0 +1,48 @@
+<div class="form-field label-picker" data-label-picker data-field-name-label-uids="{{ field_name_label_uids | default('label_uids') }}" data-field-name-new-label-names="{{ field_name_new_label_names | default('new_label_names') }}">
+    <label>{{ field_label }}</label>
+
+    <div class="label-picker-selected" data-label-picker-selected>
+        {% for label in selected_labels %}
+        <span
+            class="label-chip"
+            data-label-chip
+            data-label-uid="{{ label.label_uid }}"
+            data-label-name="{{ label.name }}"
+            data-label-color="{{ label.color or '' }}"
+        >
+            <span class="label-chip-dot"{% if label.color %} style="background-color: {{ label.color }};"{% endif %}></span>
+            <span class="label-chip-text">{{ label.name }}</span>
+            <button type="button" class="label-chip-remove" data-remove-label aria-label="Remove {{ label.name }}">&times;</button>
+        </span>
+        {% endfor %}
+    </div>
+
+    <div class="label-picker-input-row">
+        {% set datalist_id = (field_label | lower | replace(' ', '-')) ~ '-datalist' %}
+        <input
+            type="text"
+            data-label-input
+            name="label_input_{{ field_label | lower | replace(' ', '_') }}{{ request.url.path | replace('/', '_') }}"
+            list="{{ datalist_id }}"
+            placeholder="Type and press Add"
+            autocomplete="new-password"
+            readonly
+            onfocus="this.removeAttribute('readonly');"
+        >
+        <button type="button" class="btn btn-secondary" data-add-label>Add</button>
+    </div>
+
+    <datalist id="{{ datalist_id }}">
+        {% for label in all_labels %}
+        <option value="{{ label.name }}"></option>
+        {% endfor %}
+    </datalist>
+
+    <div class="label-picker-suggestions" data-label-suggestions hidden></div>
+
+    <div data-label-hidden-inputs>
+        {% for label in selected_labels %}
+        <input type="hidden" name="{{ field_name_label_uids | default('label_uids') }}" value="{{ label.label_uid }}" data-hidden-kind="existing">
+        {% endfor %}
+    </div>
+</div>

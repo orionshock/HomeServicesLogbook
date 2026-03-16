@@ -41,6 +41,20 @@
             <strong>Notes:</strong> {{ vendor.vendor_notes }}
         </div>
         {% endif %}
+
+        {% if vendor_labels %}
+        <div class="vendor-labels-block">
+            <strong>Labels:</strong>
+            <div class="label-chip-list">
+                {% for label in vendor_labels %}
+                <span class="label-chip">
+                    <span class="label-chip-dot"{% if label.color %} style="background-color: {{ label.color }};"{% endif %}></span>
+                    <span class="label-chip-text">{{ label.name }}</span>
+                </span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     {% if show_actions %}

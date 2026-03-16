@@ -17,6 +17,7 @@ from app.db import (
     create_attachment,
     create_entry,
     create_vendor,
+    get_label_by_uid,
     delete_attachment_by_uid_for_entry,
     get_attachment_by_uid,
     get_entry_by_uid,
@@ -25,12 +26,20 @@ from app.db import (
     list_attachments_for_entry_id,
     list_attachments_for_entry_ids,
     list_entries_for_vendor,
+    list_labels,
+    list_labels_for_entry_id,
+    list_labels_for_vendor_id,
     list_vendors,
+    replace_entry_labels,
+    replace_vendor_labels,
+    resolve_submitted_labels,
+    search_labels_by_name,
     unarchive_vendor_by_uid,
+    update_label_by_uid,
     update_entry_by_uid,
     update_vendor_by_uid,
 )
-from app.utils import make_uid, utc_now_iso
+from app.utils import is_valid_hex_color, make_uid, normalize_label_name, utc_now_iso
 
 
 def _resolve_current_actor(_request: Request) -> dict[str, str]:
@@ -179,6 +188,20 @@ def _normalize_portal_url(value: str) -> str | None:
             detail="Portal URL must include a valid host",
         )
 
+    return normalized
+
+
+def _normalize_optional_color(value: str) -> str | None:
+    normalized = (value or "").strip()
+    if not normalized:
+        return None
+    
+    if not is_valid_hex_color(normalized):
+        raise HTTPException(
+            status_code=400,
+            detail="Color must be a valid hex code (e.g., #2f6f9b or #2f6f9baa)",
+        )
+    
     return normalized
 
 
@@ -371,6 +394,9 @@ def vendor_new_form(request: Request):
                 {"label": "New Vendor", "url": None},
             ],
             "vendor": None,
+            "all_labels": list_labels(),
+            "selected_labels": [],
+            "field_label": "Categories",
             "is_edit": False,
             "form_action": "/vendors/new",
             "submit_label": "Save Vendor",
@@ -388,6 +414,8 @@ def vendor_new_submit(
     vendor_phone_number: str = Form(""),
     vendor_address: str = Form(""),
     vendor_notes: str = Form(""),
+    label_uids: list[str] | None = Form(None),
+    new_label_names: list[str] | None = Form(None),
 ):
     actor = request.state.current_actor["actor_id"]
     clean_vendor_name = _normalize_required_text(vendor_name, "Vendor name")
@@ -406,6 +434,19 @@ def vendor_new_submit(
         vendor_created_at=now,
         vendor_created_by=actor,
     )
+
+    created_vendor = get_vendor_by_uid(vendor_uid)
+    if created_vendor is None:
+        raise HTTPException(status_code=500, detail="Vendor was not created")
+
+    resolved_label_ids = resolve_submitted_labels(
+        label_uids=label_uids or [],
+        new_label_names=new_label_names or [],
+        actor=actor,
+        now=now,
+    )
+    replace_vendor_labels(created_vendor["id"], resolved_label_ids)
+
     return RedirectResponse(url=f"/vendor/{vendor_uid}", status_code=303)
 
 
@@ -444,6 +485,87 @@ def vendor_list(request: Request, show_archived: int | None = None):
     return response
 
 
+@app.get("/labels")
+def labels_list(request: Request):
+    return _render_template(
+        request,
+        "labels.html",
+        {
+            "breadcrumbs": [
+                {"label": "Home", "url": "/"},
+                {"label": "Labels", "url": None},
+            ],
+            "labels": list_labels(),
+        },
+    )
+
+
+@app.get("/label/{label_uid}/edit")
+def label_edit_form(request: Request, label_uid: str):
+    label = get_label_by_uid(label_uid)
+    if label is None:
+        raise HTTPException(status_code=404, detail="Label not found")
+
+    return _render_template(
+        request,
+        "label_edit.html",
+        {
+            "breadcrumbs": [
+                {"label": "Home", "url": "/"},
+                {"label": "Labels", "url": "/labels"},
+                {"label": f"Edit {label['name']}", "url": None},
+            ],
+            "label": label,
+            "form_action": f"/label/{label_uid}/edit",
+        },
+    )
+
+
+@app.post("/label/{label_uid}/edit")
+def label_edit_submit(
+    request: Request,
+    label_uid: str,
+    name: str = Form(...),
+    color: str = Form(""),
+):
+    actor = request.state.current_actor["actor_id"]
+    normalized_name = normalize_label_name(name)
+    if not normalized_name:
+        raise HTTPException(status_code=400, detail="Label name is required")
+
+    try:
+        found = update_label_by_uid(
+            label_uid=label_uid,
+            name=normalized_name,
+            color=_normalize_optional_color(color),
+            updated_at=utc_now_iso(),
+            updated_by=actor,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if not found:
+        raise HTTPException(status_code=404, detail="Label not found")
+
+    return RedirectResponse(url="/labels", status_code=303)
+
+
+@app.get("/api/labels/suggest")
+def labels_suggest(q: str = ""):
+    query = (q or "").strip()
+    if not query:
+        return []
+
+    return [
+        {
+            "label_uid": item["label_uid"],
+            "name": item["name"],
+            "color": item["color"],
+        }
+        for item in search_labels_by_name(query, limit=8)
+    ]
+
+
 @app.post("/vendor/{vendor_uid}/archive")
 def vendor_archive(request: Request, vendor_uid: str):
     actor = request.state.current_actor["actor_id"]
@@ -471,9 +593,13 @@ def vendor_detail(request: Request, vendor_uid: str):
         raise HTTPException(status_code=404, detail="Vendor not found")
 
     entries = list_entries_for_vendor(vendor["id"])
+    vendor_labels = list_labels_for_vendor_id(vendor["id"])
     attachments_by_entry: dict[int, list] = {}
+    labels_by_entry: dict[int, list] = {}
     for item in list_attachments_for_entry_ids([e["id"] for e in entries]):
         attachments_by_entry.setdefault(item["entry_id"], []).append(item)
+    for item in entries:
+        labels_by_entry[item["id"]] = list_labels_for_entry_id(item["id"])
 
     return _render_template(
         request,
@@ -485,8 +611,10 @@ def vendor_detail(request: Request, vendor_uid: str):
                 {"label": vendor["vendor_name"], "url": None},
             ],
             "vendor": vendor,
+            "vendor_labels": vendor_labels,
             "entries": entries,
             "attachments_by_entry": attachments_by_entry,
+            "labels_by_entry": labels_by_entry,
         },
     )
 
@@ -505,8 +633,11 @@ def vendor_entry_new_form(request: Request, vendor_uid: str):
 
     entries = list_entries_for_vendor(vendor["id"])
     attachments_by_entry: dict[int, list] = {}
+    labels_by_entry: dict[int, list] = {}
     for item in list_attachments_for_entry_ids([e["id"] for e in entries]):
         attachments_by_entry.setdefault(item["entry_id"], []).append(item)
+    for item in entries:
+        labels_by_entry[item["id"]] = list_labels_for_entry_id(item["id"])
 
     return _render_template(
         request,
@@ -520,10 +651,15 @@ def vendor_entry_new_form(request: Request, vendor_uid: str):
             ],
             "mode": "create",
             "vendor": vendor,
+            "vendor_labels": list_labels_for_vendor_id(vendor["id"]),
             "entry": None,
             "entry_attachments": [],
             "entries": entries,
             "attachments_by_entry": attachments_by_entry,
+            "labels_by_entry": labels_by_entry,
+            "all_labels": list_labels(),
+            "selected_labels": [],
+            "field_label": "Labels",
             "form_action": f"/vendor/{vendor_uid}/entries",
             "submit_label": "Save Entry",
         },
@@ -547,6 +683,9 @@ def vendor_edit_form(request: Request, vendor_uid: str):
                 {"label": "Edit", "url": None},
             ],
             "vendor": vendor,
+            "all_labels": list_labels(),
+            "selected_labels": list_labels_for_vendor_id(vendor["id"]),
+            "field_label": "Categories",
             "is_edit": True,
             "form_action": f"/vendor/{vendor_uid}/edit",
             "submit_label": "Save Changes",
@@ -565,12 +704,16 @@ def vendor_edit_submit(
     vendor_phone_number: str = Form(""),
     vendor_address: str = Form(""),
     vendor_notes: str = Form(""),
+    label_uids: list[str] | None = Form(None),
+    new_label_names: list[str] | None = Form(None),
 ):
     actor = request.state.current_actor["actor_id"]
     clean_vendor_name = _normalize_required_text(vendor_name, "Vendor name")
     clean_vendor_portal_url = _normalize_portal_url(vendor_portal_url)
-    if get_vendor_by_uid(vendor_uid) is None:
+    vendor = get_vendor_by_uid(vendor_uid)
+    if vendor is None:
         raise HTTPException(status_code=404, detail="Vendor not found")
+    now = utc_now_iso()
     update_vendor_by_uid(
         vendor_uid=vendor_uid,
         vendor_name=clean_vendor_name,
@@ -580,9 +723,18 @@ def vendor_edit_submit(
         vendor_phone_number=vendor_phone_number or None,
         vendor_address=vendor_address or None,
         vendor_notes=vendor_notes or None,
-        vendor_updated_at=utc_now_iso(),
+        vendor_updated_at=now,
         vendor_updated_by=actor,
     )
+
+    resolved_label_ids = resolve_submitted_labels(
+        label_uids=label_uids or [],
+        new_label_names=new_label_names or [],
+        actor=actor,
+        now=now,
+    )
+    replace_vendor_labels(vendor["id"], resolved_label_ids)
+
     return RedirectResponse(url=f"/vendor/{vendor_uid}", status_code=303)
 
 
@@ -619,8 +771,11 @@ def entry_edit_form(request: Request, entry_uid: str):
     entry_attachments = list_attachments_for_entry_id(entry["id"])
     entries = list_entries_for_vendor(vendor["id"])
     attachments_by_entry: dict[int, list] = {}
+    labels_by_entry: dict[int, list] = {}
     for item in list_attachments_for_entry_ids([e["id"] for e in entries]):
         attachments_by_entry.setdefault(item["entry_id"], []).append(item)
+    for item in entries:
+        labels_by_entry[item["id"]] = list_labels_for_entry_id(item["id"])
 
     entry_crumb_label = entry["entry_title"] if entry["entry_title"] else entry_uid
     return _render_template(
@@ -635,10 +790,15 @@ def entry_edit_form(request: Request, entry_uid: str):
             ],
             "mode": "edit",
             "vendor": vendor,
+            "vendor_labels": list_labels_for_vendor_id(vendor["id"]),
             "entry": entry,
             "entry_attachments": entry_attachments,
             "entries": entries,
             "attachments_by_entry": attachments_by_entry,
+            "labels_by_entry": labels_by_entry,
+            "all_labels": list_labels(),
+            "selected_labels": list_labels_for_entry_id(entry["id"]),
+            "field_label": "Labels",
             "current_entry_uid": entry_uid,
             "form_action": f"/entry/{entry_uid}/edit",
             "submit_label": "Save Entry Changes",
@@ -654,6 +814,8 @@ def entry_edit_submit(
     entry_title: str = Form(""),
     entry_interaction_at: str = Form(""),
     entry_rep_name: str = Form(""),
+    label_uids: list[str] | None = Form(None),
+    new_label_names: list[str] | None = Form(None),
     remove_attachment_uids: list[str] | None = Form(None),
     attachments: list[UploadFile] | None = File(None),
 ):
@@ -666,15 +828,24 @@ def entry_edit_submit(
     for upload in new_attachments:
         _validate_attachment_upload(upload)
 
+    now = utc_now_iso()
     update_entry_by_uid(
         entry_uid=entry_uid,
         entry_title=entry_title or None,
         entry_interaction_at=_normalize_entry_interaction_at_utc(entry_interaction_at),
         entry_body_text=entry_body_text or None,
         entry_rep_name=entry_rep_name or None,
-        entry_updated_at=utc_now_iso(),
+        entry_updated_at=now,
         entry_updated_by=actor,
     )
+
+    resolved_label_ids = resolve_submitted_labels(
+        label_uids=label_uids or [],
+        new_label_names=new_label_names or [],
+        actor=actor,
+        now=now,
+    )
+    replace_entry_labels(entry["id"], resolved_label_ids)
 
     for attachment_uid in set(remove_attachment_uids or []):
         deleted_attachment = delete_attachment_by_uid_for_entry(entry["id"], attachment_uid)
@@ -694,6 +865,8 @@ def create_vendor_entry(
     entry_title: str = Form(""),
     entry_interaction_at: str = Form(""),
     entry_rep_name: str = Form(""),
+    label_uids: list[str] | None = Form(None),
+    new_label_names: list[str] | None = Form(None),
     attachments: list[UploadFile] | None = File(None),
 ):
     actor = request.state.current_actor["actor_id"]
@@ -711,6 +884,10 @@ def create_vendor_entry(
     for upload in new_attachments:
         _validate_attachment_upload(upload)
 
+    has_submitted_label_values = bool(label_uids) or any(
+        normalize_label_name(item or "") for item in (new_label_names or [])
+    )
+
     # Skip record creation if every field is blank and no files were attached.
     if not any([
         entry_body_text.strip(),
@@ -718,9 +895,11 @@ def create_vendor_entry(
         entry_interaction_at.strip(),
         entry_rep_name.strip(),
         new_attachments,
+        has_submitted_label_values,
     ]):
         return RedirectResponse(url=f"/vendor/{vendor_uid}", status_code=303)
 
+    now = utc_now_iso()
     entry_id = create_entry(
         entry_uid=make_uid("entry"),
         vendor_id=vendor["id"],
@@ -729,8 +908,16 @@ def create_vendor_entry(
         entry_body_text=entry_body_text or None,
         entry_rep_name=entry_rep_name or None,
         entry_created_by=actor,
-        entry_created_at=utc_now_iso(),
+        entry_created_at=now,
     )
+
+    resolved_label_ids = resolve_submitted_labels(
+        label_uids=label_uids or [],
+        new_label_names=new_label_names or [],
+        actor=actor,
+        now=now,
+    )
+    replace_entry_labels(entry_id, resolved_label_ids)
 
     _store_uploaded_attachments(new_attachments, entry_id=entry_id, actor=actor)
 

@@ -17,7 +17,7 @@
         <section class="content-section entry-form-primary">
             <h2>{{ page_title }}</h2>
 
-            <form id="entry-form" method="post" action="{{ form_action }}" enctype="multipart/form-data">
+            <form id="entry-form" method="post" action="{{ form_action }}" enctype="multipart/form-data" autocomplete="off">
                 <div class="entry-meta-grid">
                     <div class="form-field entry-meta-full-width">
                         <label for="entry_title" title="Optional">Title</label>
@@ -40,6 +40,10 @@
                         <input type="hidden" id="entry_interaction_at" name="entry_interaction_at" value="{% if entry and entry.entry_interaction_at %}{{ entry.entry_interaction_at }}{% endif %}">
                     </div>
                 </div>
+
+                {% set field_name_label_uids = "label_uids" %}
+                {% set field_name_new_label_names = "new_label_names" %}
+                {% include "partials/label_picker.html" %}
 
                 <div class="form-field">
                     <label for="entry_body_text">Entry</label>
@@ -121,6 +125,7 @@
                 {% set log_entry = history_entry %}
                 {% set log_mode = "compact" %}
                 {% set log_entry_attachments = attachments_by_entry.get(history_entry.id, []) %}
+                {% set log_entry_labels = labels_by_entry.get(history_entry.id, []) %}
                 {% set is_current_entry = (current_entry_uid is defined) and (history_entry.entry_uid == current_entry_uid) %}
                 {% include "partials/log_entry_card.html" %}
                 {% endfor %}
@@ -136,4 +141,5 @@
 
 {% block scripts %}
 <script src="/static/js/entry_form.js"></script>
+<script src="/static/js/labels.js"></script>
 {% endblock %}

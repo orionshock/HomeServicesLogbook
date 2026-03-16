@@ -386,6 +386,7 @@ h2 {
 
 .form-field textarea,
 .form-field input[type="text"],
+.form-field input[type="color"],
 .form-field input[type="datetime-local"],
 .form-field input[type="file"] {
     width: 100%;
@@ -400,6 +401,121 @@ h2 {
 .form-field textarea {
     resize: vertical;
     min-height: 140px;
+}
+
+.label-picker {
+    position: relative;
+}
+
+.label-picker-selected,
+.label-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.label-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--line);
+    background: #fff;
+    border-radius: 999px;
+    padding: 3px 8px;
+    font-size: 0.85rem;
+}
+
+.label-chip-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: #8a8a8a;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.label-chip-remove {
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+    font-size: 1rem;
+}
+
+.label-picker-input-row {
+    display: flex;
+    gap: 8px;
+}
+
+.label-picker-input-row input[type="text"] {
+    flex: 1;
+}
+
+.label-picker-suggestions {
+    margin-top: 6px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-width: 420px;
+}
+
+.label-suggestion-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid transparent;
+    background: #fff;
+    border-radius: 6px;
+    padding: 5px 6px;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+}
+
+.label-suggestion-item:hover {
+    border-color: var(--line);
+    background: #faf6ef;
+}
+
+.vendor-labels-block {
+    margin-top: 12px;
+}
+
+.vendor-labels-block .label-chip-list {
+    margin-top: 6px;
+    margin-bottom: 0;
+}
+
+.label-management-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.label-management-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px;
+    background: #fff;
+}
+
+.label-color-value {
+    color: var(--muted);
+    font-size: 0.9rem;
 }
 
 .entry-meta-grid {
@@ -669,6 +785,15 @@ hr {
     .vendors-actions-row {
         flex-direction: column;
         align-items: stretch;
+    }
+
+    .label-management-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .label-picker-input-row {
+        flex-direction: column;
     }
 
 }
