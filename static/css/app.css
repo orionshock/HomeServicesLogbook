@@ -386,7 +386,6 @@ h2 {
 
 .form-field textarea,
 .form-field input[type="text"],
-.form-field input[type="color"],
 .form-field input[type="datetime-local"],
 .form-field input[type="file"] {
     width: 100%;
@@ -503,19 +502,113 @@ h2 {
 }
 
 .label-management-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
+    display: block;
     border: 1px solid var(--line);
     border-radius: 8px;
     padding: 10px;
     background: #fff;
 }
 
+.label-management-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+}
+
+.label-management-name-column {
+    min-width: 0;
+}
+
+.label-management-name-view {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 100%;
+}
+
+.label-management-name {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.label-management-edit-trigger {
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    opacity: 0;
+    padding: 0;
+    font: inherit;
+    line-height: 1;
+}
+
+.label-management-item:hover .label-management-edit-trigger,
+.label-management-item:focus-within .label-management-edit-trigger {
+    opacity: 1;
+}
+
+.label-management-name-edit {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.label-management-name-input {
+    width: 30ch;
+    max-width: 100%;
+}
+
+.label-management-color-column {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
 .label-color-value {
     color: var(--muted);
     font-size: 0.9rem;
+}
+
+.label-color-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.label-color-row input[type="color"],
+.label-management-color-input {
+    width: 100px;
+    height: 50px;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+}
+
+.label-color-row input[type="color"]::-webkit-color-swatch-wrapper,
+.label-management-color-input::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.label-color-row input[type="color"]::-webkit-color-swatch,
+.label-management-color-input::-webkit-color-swatch {
+    border: none;
+    border-radius: 7px;
+}
+
+.label-color-row input[type="color"]::-moz-color-swatch,
+.label-management-color-input::-moz-color-swatch {
+    border: none;
+    border-radius: 7px;
+}
+
+.label-color-preview-value {
+    margin: 0;
+    font-family: Consolas, "Courier New", monospace;
+    color: var(--muted);
 }
 
 .entry-meta-grid {
@@ -788,11 +881,24 @@ hr {
     }
 
     .label-management-item {
-        flex-direction: column;
+        padding: 10px;
+    }
+
+    .label-management-form {
+        grid-template-columns: 1fr;
+    }
+
+    .label-management-color-column {
         align-items: flex-start;
+        flex-direction: column;
     }
 
     .label-picker-input-row {
+        flex-direction: column;
+    }
+
+    .label-color-row {
+        align-items: flex-start;
         flex-direction: column;
     }
 

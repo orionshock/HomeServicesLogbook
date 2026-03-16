@@ -489,7 +489,7 @@ def vendor_list(request: Request, show_archived: int | None = None):
 def labels_list(request: Request):
     return _render_template(
         request,
-        "labels.html",
+        "label_admin.html",
         {
             "breadcrumbs": [
                 {"label": "Home", "url": "/"},
@@ -502,23 +502,10 @@ def labels_list(request: Request):
 
 @app.get("/label/{label_uid}/edit")
 def label_edit_form(request: Request, label_uid: str):
-    label = get_label_by_uid(label_uid)
-    if label is None:
+    if get_label_by_uid(label_uid) is None:
         raise HTTPException(status_code=404, detail="Label not found")
 
-    return _render_template(
-        request,
-        "label_edit.html",
-        {
-            "breadcrumbs": [
-                {"label": "Home", "url": "/"},
-                {"label": "Labels", "url": "/labels"},
-                {"label": f"Edit {label['name']}", "url": None},
-            ],
-            "label": label,
-            "form_action": f"/label/{label_uid}/edit",
-        },
-    )
+    return RedirectResponse(url="/labels", status_code=303)
 
 
 @app.post("/label/{label_uid}/edit")

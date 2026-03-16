@@ -266,10 +266,5 @@
         renderHiddenInputs();
     }
 
-    function init() {
-        const pickers = document.querySelectorAll("[data-label-picker]");
-        pickers.forEach(setupPicker);
-    }
-
-    document.addEventListener("DOMContentLoaded", init);
+    document.querySelectorAll("[data-label-picker]").forEach(setupPicker);
 })();
