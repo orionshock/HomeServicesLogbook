@@ -1,14 +1,16 @@
 <article class="timeline-entry timeline-entry-{{ log_mode }}{% if is_current_entry is defined and is_current_entry %} is-current-entry{% endif %}">
-    {% if log_entry.title %}
-    <h3 class="entry-title">{{ log_entry.title }}</h3>
-    {% endif %}
+    <div class="entry-heading">
+        <h3 class="entry-title">{{ log_entry.title or "Untitled Entry" }}</h3>
+        {% if log_entry.interaction_at %}
+        <p class="entry-subtitle">Interaction: <time class="js-local-time" datetime="{{ log_entry.interaction_at }}">{{ log_entry.interaction_at }}</time></p>
+        {% else %}
+        <p class="entry-subtitle">Logged: <time class="js-local-time" datetime="{{ log_entry.created_at }}">{{ log_entry.created_at }}</time></p>
+        {% endif %}
+        {% if log_entry.rep_name %}
+        <p class="entry-subtitle">Rep: {{ log_entry.rep_name }}</p>
+        {% endif %}
+    </div>
 
-    {% if log_entry.interaction_at %}
-    <p class="entry-meta"><strong>Interaction:</strong> <time class="js-local-time" datetime="{{ log_entry.interaction_at }}">{{ log_entry.interaction_at }}</time></p>
-    <p class="entry-meta"><strong>Logged:</strong> <time class="js-local-time" datetime="{{ log_entry.created_at }}">{{ log_entry.created_at }}</time></p>
-    {% else %}
-    <p class="entry-meta"><strong>Logged:</strong> <time class="js-local-time" datetime="{{ log_entry.created_at }}">{{ log_entry.created_at }}</time></p>
-    {% endif %}
     {% if log_mode == "full" and log_entry.updated_at %}
     <p class="entry-meta"><strong>Edited:</strong> <time class="js-local-time" datetime="{{ log_entry.updated_at }}">{{ log_entry.updated_at }}</time></p>
     {% endif %}
@@ -21,12 +23,6 @@
     {% endif %}
     {% elif log_mode == "compact" %}
     <p class="entry-body-compact">No note text.</p>
-    {% endif %}
-
-    {% if log_mode == "full" and log_entry.rep_name %}
-    <p><strong>Rep Name:</strong> {{ log_entry.rep_name }}</p>
-    {% elif log_mode == "compact" and log_entry.rep_name %}
-    <p class="entry-meta"><strong>Rep:</strong> {{ log_entry.rep_name }}</p>
     {% endif %}
 
     {% if log_mode == "full" and log_entry_attachments %}

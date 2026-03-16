@@ -6,7 +6,6 @@
 
 ## Entries
 ### Log History Behavior
-- [ ] While editing an entry, hide that same entry from the history list.
 - [ ] Update each history card to use title as the primary line and created timestamp as subtitle.
 - [ ] Show only the 10 most recent entries. With a more button?
 - [ ] Make history panel scrollable and anchor it near the notes section bottom-right.
