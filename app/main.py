@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse
+from fastapi.responses import JSONResponse
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -17,6 +18,7 @@ from app.db import (
     create_attachment,
     create_entry,
     create_vendor,
+    delete_label_by_uid,
     get_label_by_uid,
     delete_attachment_by_uid_for_entry,
     get_attachment_by_uid,
@@ -535,6 +537,162 @@ def label_edit_submit(
         raise HTTPException(status_code=404, detail="Label not found")
 
     return RedirectResponse(url="/labels", status_code=303)
+
+
+@app.post("/label/{label_uid}/color")
+def label_color_submit(
+    request: Request,
+    label_uid: str,
+    color: str = Form(""),
+):
+    actor = request.state.current_actor["actor_id"]
+    label = get_label_by_uid(label_uid)
+    if label is None:
+        raise HTTPException(status_code=404, detail="Label not found")
+
+    try:
+        found = update_label_by_uid(
+            label_uid=label_uid,
+            name=label["name"],
+            color=_normalize_optional_color(color),
+            updated_at=utc_now_iso(),
+            updated_by=actor,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    if not found:
+        raise HTTPException(status_code=404, detail="Label not found")
+
+    return RedirectResponse(url="/labels", status_code=303)
+
+
+@app.post("/label/{label_uid}/delete")
+def label_delete_submit(label_uid: str):
+    found = delete_label_by_uid(label_uid)
+    if not found:
+        raise HTTPException(status_code=404, detail="Label not found")
+
+    return RedirectResponse(url="/labels", status_code=303)
+
+
+@app.post("/labels/{label_uid}/rename")
+async def label_rename_inline(request: Request, label_uid: str):
+    payload = await request.json()
+    submitted_name = str(payload.get("name", "")) if isinstance(payload, dict) else ""
+
+    normalized_name = normalize_label_name(submitted_name)
+    if not normalized_name:
+        return JSONResponse(
+            status_code=400,
+            content={"ok": False, "error": "Label name is required"},
+        )
+
+    actor = request.state.current_actor["actor_id"]
+    existing = get_label_by_uid(label_uid)
+    if existing is None:
+        return JSONResponse(
+            status_code=404,
+            content={"ok": False, "error": "Label not found"},
+        )
+
+    try:
+        found = update_label_by_uid(
+            label_uid=label_uid,
+            name=normalized_name,
+            color=existing["color"],
+            updated_at=utc_now_iso(),
+            updated_by=actor,
+        )
+    except ValueError as exc:
+        return JSONResponse(
+            status_code=400,
+            content={"ok": False, "error": str(exc)},
+        )
+
+    if not found:
+        return JSONResponse(
+            status_code=404,
+            content={"ok": False, "error": "Label not found"},
+        )
+
+    updated = get_label_by_uid(label_uid)
+    if updated is None:
+        return JSONResponse(
+            status_code=404,
+            content={"ok": False, "error": "Label not found"},
+        )
+
+    return {
+        "ok": True,
+        "label_uid": label_uid,
+        "name": updated["name"],
+        "color": updated["color"] or "#000000",
+    }
+
+
+@app.post("/labels/{label_uid}/color")
+async def label_color_inline(request: Request, label_uid: str):
+    payload = await request.json()
+    submitted_color = str(payload.get("color", "")) if isinstance(payload, dict) else ""
+
+    actor = request.state.current_actor["actor_id"]
+    existing = get_label_by_uid(label_uid)
+    if existing is None:
+        return JSONResponse(
+            status_code=404,
+            content={"ok": False, "error": "Label not found"},
+        )
+
+    try:
+        found = update_label_by_uid(
+            label_uid=label_uid,
+            name=existing["name"],
+            color=_normalize_optional_color(submitted_color),
+            updated_at=utc_now_iso(),
+            updated_by=actor,
+        )
+    except ValueError as exc:
+        return JSONResponse(
+            status_code=400,
+            content={"ok": False, "error": str(exc)},
+        )
+    except HTTPException as exc:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"ok": False, "error": str(exc.detail)},
+        )
+
+    if not found:
+        return JSONResponse(
+            status_code=404,
+            content={"ok": False, "error": "Label not found"},
+        )
+
+    updated = get_label_by_uid(label_uid)
+    if updated is None:
+        return JSONResponse(
+            status_code=404,
+            content={"ok": False, "error": "Label not found"},
+        )
+
+    return {
+        "ok": True,
+        "label_uid": label_uid,
+        "color": updated["color"] or "#000000",
+    }
+
+
+@app.post("/labels/{label_uid}/delete")
+async def label_delete_inline(label_uid: str):
+    found = delete_label_by_uid(label_uid)
+    if not found:
+        return JSONResponse(
+            status_code=404,
+            content={"ok": False, "error": "Label not found"},
+        )
+
+    return {"ok": True, "label_uid": label_uid}
 
 
 @app.get("/api/labels/suggest")

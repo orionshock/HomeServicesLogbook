@@ -9,30 +9,42 @@
     {% if labels %}
     <ul class="label-management-list">
         {% for label in labels %}
-        <li class="label-management-item" data-label-row>
-            <form method="post" action="/label/{{ label.label_uid }}/edit" class="label-management-form" data-label-form>
+        <li
+            class="label-management-item"
+            data-label-row
+            data-label-uid="{{ label.label_uid }}"
+            data-label-name="{{ label.name }}"
+            data-label-color="{{ label.color or '#000000' }}"
+        >
+            <div class="label-management-row">
                 <div class="label-management-name-column">
                     <div class="label-management-name-view" data-label-name-view>
-                        <span class="label-management-name">{{ label.name }}</span>
+                        <span class="label-management-name" data-label-name-text>{{ label.name }}</span>
                         <button type="button" class="label-management-edit-trigger" data-label-edit-trigger aria-label="Edit {{ label.name }}">&#x270F;&#xFE0F;</button>
                     </div>
                     <div class="label-management-name-edit" data-label-name-edit hidden>
-                        <input type="text" value="{{ label.name }}" data-label-name-input class="label-management-name-input">
-                        <button type="submit" class="btn btn-secondary" data-label-name-save>Save</button>
+                        <input type="text" value="{{ label.name }}" data-label-name-input class="label-management-name-input" maxlength="60">
+                        <button type="button" class="btn btn-secondary" data-label-name-save>Save</button>
+                        <button type="button" class="btn btn-secondary" data-label-name-cancel>Cancel</button>
                     </div>
-                    <input type="hidden" name="name" value="{{ label.name }}" data-label-name-hidden>
                 </div>
 
                 <div class="label-management-color-column">
-                    <input type="color" name="color" value="{{ label.color or '#000000' }}" class="label-management-color-input" data-label-color-input>
+                    <input type="color" value="{{ label.color or '#000000' }}" class="label-management-color-input" data-label-color-input>
                     <span class="label-color-value" data-label-color-value>{{ (label.color or '#000000') | upper }}</span>
                 </div>
-            </form>
+
+                <div class="label-management-delete-column">
+                    <button type="button" class="btn btn-danger" data-label-delete>Delete</button>
+                </div>
+            </div>
+            <p class="label-row-error" data-label-row-error hidden></p>
         </li>
         {% endfor %}
     </ul>
+    <p data-label-empty-state hidden>No labels yet. Labels are created from vendor and entry forms.</p>
     {% else %}
-    <p>No labels yet. Labels are created from vendor and entry forms.</p>
+    <p data-label-empty-state>No labels yet. Labels are created from vendor and entry forms.</p>
     {% endif %}
 </section>
 {% endblock %}

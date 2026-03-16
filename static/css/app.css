@@ -509,9 +509,9 @@ h2 {
     background: #fff;
 }
 
-.label-management-form {
+.label-management-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     align-items: center;
     gap: 12px;
 }
@@ -549,9 +549,17 @@ h2 {
 }
 
 .label-management-name-edit {
-    display: flex;
+    display: none;
     align-items: center;
     gap: 8px;
+}
+
+.label-management-item.is-editing .label-management-name-view {
+    display: none;
+}
+
+.label-management-item.is-editing .label-management-name-edit {
+    display: flex;
 }
 
 .label-management-name-input {
@@ -565,9 +573,24 @@ h2 {
     gap: 10px;
 }
 
+.label-management-name-edit .btn,
+.label-management-delete-column .btn {
+    padding: 6px 10px;
+}
+
+.label-management-delete-column {
+    justify-self: end;
+}
+
+.label-management-item.is-row-busy {
+    opacity: 0.72;
+}
+
 .label-color-value {
     color: var(--muted);
     font-size: 0.9rem;
+    font-family: Consolas, "Courier New", monospace;
+    white-space: nowrap;
 }
 
 .label-color-row {
@@ -603,6 +626,12 @@ h2 {
 .label-management-color-input::-moz-color-swatch {
     border: none;
     border-radius: 7px;
+}
+
+.label-row-error {
+    margin: 8px 0 0;
+    color: var(--danger);
+    font-size: 0.9rem;
 }
 
 .label-color-preview-value {
@@ -884,13 +913,17 @@ hr {
         padding: 10px;
     }
 
-    .label-management-form {
+    .label-management-row {
         grid-template-columns: 1fr;
+        align-items: flex-start;
     }
 
     .label-management-color-column {
         align-items: flex-start;
-        flex-direction: column;
+    }
+
+    .label-management-delete-column {
+        justify-self: start;
     }
 
     .label-picker-input-row {

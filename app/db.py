@@ -373,6 +373,15 @@ def update_label_by_uid(
         return True
 
 
+def delete_label_by_uid(label_uid: str) -> bool:
+    with get_connection() as conn:
+        cursor = conn.execute(
+            "DELETE FROM labels WHERE label_uid = ?",
+            (label_uid,),
+        )
+        return cursor.rowcount > 0
+
+
 def search_labels_by_name(query: str, limit: int = 10) -> list[sqlite3.Row]:
     with get_connection() as conn:
         return conn.execute(
