@@ -25,10 +25,6 @@
             <input type="text" id="vendor_name" name="vendor_name" required value="{% if vendor %}{{ vendor.vendor_name or '' }}{% endif %}">
         </div>
         <div class="form-field">
-            <label for="vendor_label">Vendor Label</label>
-            <input type="text" id="vendor_label" name="vendor_label" placeholder="e.g. ISP, HVAC, Plumber" value="{% if vendor %}{{ vendor.vendor_label or '' }}{% endif %}">
-        </div>
-        <div class="form-field">
             <label for="vendor_account_number">Account Number</label>
             <input type="text" id="vendor_account_number" name="vendor_account_number" value="{% if vendor %}{{ vendor.vendor_account_number or '' }}{% endif %}">
         </div>

@@ -2,9 +2,6 @@
     <div class="vendor-header-main">
         <h1 class="vendor-title">
             <span class="vendor-title-text">{{ vendor.vendor_name }}</span>
-            {% if vendor.vendor_label %}
-            <span class="vendor-title-subtitle">{{ vendor.vendor_label }}</span>
-            {% endif %}
             {% if vendor.vendor_archived_at %}
             <span class="archived-badge">Archived</span>
             {% endif %}

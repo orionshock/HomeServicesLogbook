@@ -19,7 +19,6 @@ def init_db() -> None:
                 id                     INTEGER PRIMARY KEY,
                 vendor_uid             TEXT UNIQUE NOT NULL,
                 vendor_name            TEXT NOT NULL,
-                vendor_label           TEXT,
                 vendor_account_number  TEXT,
                 vendor_portal_url      TEXT,
                 vendor_portal_username TEXT,
@@ -109,7 +108,6 @@ def list_vendors(include_archived: bool = False) -> list[sqlite3.Row]:
 def create_vendor(
     vendor_uid: str,
     vendor_name: str,
-    vendor_label: str | None,
     vendor_account_number: str | None,
     vendor_portal_url: str | None,
     vendor_portal_username: str | None,
@@ -123,17 +121,16 @@ def create_vendor(
         conn.execute(
             """
             INSERT INTO vendors (
-                vendor_uid, vendor_name, vendor_label, vendor_account_number,
+                vendor_uid, vendor_name, vendor_account_number,
                 vendor_portal_url, vendor_portal_username,
                 vendor_phone_number, vendor_address,
                 vendor_notes, vendor_created_at, vendor_created_by
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 vendor_uid,
                 vendor_name,
-                vendor_label,
                 vendor_account_number,
                 vendor_portal_url,
                 vendor_portal_username,
@@ -149,7 +146,6 @@ def create_vendor(
 def update_vendor_by_uid(
     vendor_uid: str,
     vendor_name: str,
-    vendor_label: str | None,
     vendor_account_number: str | None,
     vendor_portal_url: str | None,
     vendor_portal_username: str | None,
@@ -165,7 +161,6 @@ def update_vendor_by_uid(
             UPDATE vendors
             SET
                 vendor_name = ?,
-                vendor_label = ?,
                 vendor_account_number = ?,
                 vendor_portal_url = ?,
                 vendor_portal_username = ?,
@@ -178,7 +173,6 @@ def update_vendor_by_uid(
             """,
             (
                 vendor_name,
-                vendor_label,
                 vendor_account_number,
                 vendor_portal_url,
                 vendor_portal_username,

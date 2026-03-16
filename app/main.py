@@ -382,7 +382,6 @@ def vendor_new_form(request: Request):
 def vendor_new_submit(
     request: Request,
     vendor_name: str = Form(...),
-    vendor_label: str = Form(""),
     vendor_account_number: str = Form(""),
     vendor_portal_url: str = Form(""),
     vendor_portal_username: str = Form(""),
@@ -398,7 +397,6 @@ def vendor_new_submit(
     create_vendor(
         vendor_uid=vendor_uid,
         vendor_name=clean_vendor_name,
-        vendor_label=vendor_label or None,
         vendor_account_number=vendor_account_number or None,
         vendor_portal_url=clean_vendor_portal_url,
         vendor_portal_username=vendor_portal_username or None,
@@ -561,7 +559,6 @@ def vendor_edit_submit(
     request: Request,
     vendor_uid: str,
     vendor_name: str = Form(...),
-    vendor_label: str = Form(""),
     vendor_account_number: str = Form(""),
     vendor_portal_url: str = Form(""),
     vendor_portal_username: str = Form(""),
@@ -577,7 +574,6 @@ def vendor_edit_submit(
     update_vendor_by_uid(
         vendor_uid=vendor_uid,
         vendor_name=clean_vendor_name,
-        vendor_label=vendor_label or None,
         vendor_account_number=vendor_account_number or None,
         vendor_portal_url=clean_vendor_portal_url,
         vendor_portal_username=vendor_portal_username or None,

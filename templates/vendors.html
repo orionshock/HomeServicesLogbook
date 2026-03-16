@@ -18,38 +18,19 @@
     <input type="text" id="vendorSearch" placeholder="Filter vendors…" autocomplete="off">
 </div>
 
-{% for grouper, group in (vendors | selectattr("vendor_label") | list) | groupby("vendor_label") %}
-<section class="vendor-category-section" data-category="{{ grouper }}">
+<section class="vendor-category-section" data-category="All Vendors">
     <h2 class="vendor-category-header">
-        <span class="category-toggle-icon">▾</span>{{ grouper }}
+        <span class="category-toggle-icon">▾</span>All Vendors
     </h2>
     <ul class="vendor-category-list">
-        {% for vendor in group %}
-        <li class="vendor-item" data-name="{{ vendor.vendor_name }}" data-category="{{ grouper }}">
+        {% for vendor in vendors %}
+        <li class="vendor-item" data-name="{{ vendor.vendor_name }}" data-category="All Vendors">
             <a href="/vendor/{{ vendor.vendor_uid }}">{{ vendor.vendor_name }}</a>
             {% if vendor.vendor_archived_at %}<span class="archived-badge">Archived</span>{% endif %}
         </li>
         {% endfor %}
     </ul>
 </section>
-{% endfor %}
-
-{% set uncategorized = vendors | rejectattr("vendor_label") | list %}
-{% if uncategorized %}
-<section class="vendor-category-section" data-category="Uncategorized">
-    <h2 class="vendor-category-header">
-        <span class="category-toggle-icon">▾</span>Uncategorized
-    </h2>
-    <ul class="vendor-category-list">
-        {% for vendor in uncategorized %}
-        <li class="vendor-item" data-name="{{ vendor.vendor_name }}" data-category="Uncategorized">
-            <a href="/vendor/{{ vendor.vendor_uid }}">{{ vendor.vendor_name }}</a>
-            {% if vendor.vendor_archived_at %}<span class="archived-badge">Archived</span>{% endif %}
-        </li>
-        {% endfor %}
-    </ul>
-</section>
-{% endif %}
 
 {% else %}
 <p>No vendors yet. Add your first vendor to get started.</p>
