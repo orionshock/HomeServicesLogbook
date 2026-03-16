@@ -17,6 +17,7 @@ from app.db import (
     archive_vendor_by_uid,
     create_attachment,
     create_entry,
+    create_label,
     create_vendor,
     delete_label_by_uid,
     get_label_by_uid,
@@ -502,78 +503,59 @@ def labels_list(request: Request):
     )
 
 
-@app.get("/label/{label_uid}/edit")
-def label_edit_form(request: Request, label_uid: str):
-    if get_label_by_uid(label_uid) is None:
-        raise HTTPException(status_code=404, detail="Label not found")
 
-    return RedirectResponse(url="/labels", status_code=303)
+@app.post("/labels/new")
+async def label_create_inline(request: Request):
+    payload = await request.json()
+    submitted_name = str(payload.get("name", "")) if isinstance(payload, dict) else ""
+    submitted_color = str(payload.get("color", "")) if isinstance(payload, dict) else ""
 
-
-@app.post("/label/{label_uid}/edit")
-def label_edit_submit(
-    request: Request,
-    label_uid: str,
-    name: str = Form(...),
-    color: str = Form(""),
-):
-    actor = request.state.current_actor["actor_id"]
-    normalized_name = normalize_label_name(name)
+    normalized_name = normalize_label_name(submitted_name)
     if not normalized_name:
-        raise HTTPException(status_code=400, detail="Label name is required")
+        return JSONResponse(
+            status_code=400,
+            content={"ok": False, "error": "Label name is required"},
+        )
 
     try:
-        found = update_label_by_uid(
+        normalized_color = _normalize_optional_color(submitted_color)
+    except HTTPException as exc:
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"ok": False, "error": str(exc.detail)},
+        )
+
+    actor = request.state.current_actor["actor_id"]
+    now = utc_now_iso()
+    label_uid = make_uid("label", name=normalized_name)
+
+    try:
+        create_label(
             label_uid=label_uid,
             name=normalized_name,
-            color=_normalize_optional_color(color),
-            updated_at=utc_now_iso(),
-            updated_by=actor,
+            color=normalized_color,
+            created_at=now,
+            created_by=actor,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-    if not found:
-        raise HTTPException(status_code=404, detail="Label not found")
-
-    return RedirectResponse(url="/labels", status_code=303)
-
-
-@app.post("/label/{label_uid}/color")
-def label_color_submit(
-    request: Request,
-    label_uid: str,
-    color: str = Form(""),
-):
-    actor = request.state.current_actor["actor_id"]
-    label = get_label_by_uid(label_uid)
-    if label is None:
-        raise HTTPException(status_code=404, detail="Label not found")
-
-    try:
-        found = update_label_by_uid(
-            label_uid=label_uid,
-            name=label["name"],
-            color=_normalize_optional_color(color),
-            updated_at=utc_now_iso(),
-            updated_by=actor,
+        return JSONResponse(
+            status_code=409,
+            content={"ok": False, "error": str(exc)},
         )
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    if not found:
-        raise HTTPException(status_code=404, detail="Label not found")
+    created = get_label_by_uid(label_uid)
+    if created is None:
+        return JSONResponse(
+            status_code=500,
+            content={"ok": False, "error": "Label was not created"},
+        )
 
-    return RedirectResponse(url="/labels", status_code=303)
-
-
-@app.post("/label/{label_uid}/delete")
-def label_delete_submit(label_uid: str):
-    found = delete_label_by_uid(label_uid)
-    if not found:
-        raise HTTPException(status_code=404, detail="Label not found")
-
-    return RedirectResponse(url="/labels", status_code=303)
+    return {
+        "ok": True,
+        "label_uid": created["label_uid"],
+        "name": created["name"],
+        "color": created["color"] or "#000000",
+    }
 
 
 @app.post("/labels/{label_uid}/rename")

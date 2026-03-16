@@ -3,10 +3,29 @@
 {% block title %}Labels - Home Services Logbook{% endblock %}
 
 {% block content %}
-<h1>Labels</h1>
+<div class="label-page-header">
+    <h1>Labels</h1>
+    <button type="button" class="btn btn-secondary" data-label-new-trigger>+ New Label</button>
+</div>
 
 <section class="content-section">
-    {% if labels %}
+    <div class="label-create-row" data-label-create-row hidden>
+        <div class="label-management-row">
+            <div class="label-management-color-column">
+                <input type="color" value="#FF6B6B" class="label-management-color-input" data-create-color-input>
+            </div>
+            <div class="label-management-name-column">
+                <div class="label-management-name-edit" style="display:flex">
+                    <input type="text" data-create-name-input class="label-management-name-input" maxlength="60" placeholder="Label name">
+                    <button type="button" class="btn btn-secondary" data-create-save>Save</button>
+                    <button type="button" class="btn btn-secondary" data-create-cancel>Cancel</button>
+                </div>
+            </div>
+            <div class="label-management-delete-column"></div>
+        </div>
+        <p class="label-row-error" data-create-row-error hidden></p>
+    </div>
+
     <ul class="label-management-list">
         {% for label in labels %}
         <li
@@ -17,23 +36,23 @@
             data-label-color="{{ label.color or '#000000' }}"
         >
             <div class="label-management-row">
+                <div class="label-management-color-column">
+                    {% if current_actor.actor_id == "devUser" %}
+                    <span class="label-color-value" data-label-color-value>{{ (label.color or '#000000') | upper }}</span>
+                    {% endif %}
+                    <input type="color" value="{{ label.color or '#000000' }}" class="label-management-color-input" data-label-color-input>
+                </div>
                 <div class="label-management-name-column">
-                    <div class="label-management-name-view" data-label-name-view>
+                    <div class="label-management-name-view">
                         <span class="label-management-name" data-label-name-text>{{ label.name }}</span>
                         <button type="button" class="label-management-edit-trigger" data-label-edit-trigger aria-label="Edit {{ label.name }}">&#x270F;&#xFE0F;</button>
                     </div>
-                    <div class="label-management-name-edit" data-label-name-edit hidden>
+                    <div class="label-management-name-edit" hidden>
                         <input type="text" value="{{ label.name }}" data-label-name-input class="label-management-name-input" maxlength="60">
                         <button type="button" class="btn btn-secondary" data-label-name-save>Save</button>
                         <button type="button" class="btn btn-secondary" data-label-name-cancel>Cancel</button>
                     </div>
                 </div>
-
-                <div class="label-management-color-column">
-                    <input type="color" value="{{ label.color or '#000000' }}" class="label-management-color-input" data-label-color-input>
-                    <span class="label-color-value" data-label-color-value>{{ (label.color or '#000000') | upper }}</span>
-                </div>
-
                 <div class="label-management-delete-column">
                     <button type="button" class="btn btn-danger" data-label-delete>Delete</button>
                 </div>
@@ -42,10 +61,7 @@
         </li>
         {% endfor %}
     </ul>
-    <p data-label-empty-state hidden>No labels yet. Labels are created from vendor and entry forms.</p>
-    {% else %}
-    <p data-label-empty-state>No labels yet. Labels are created from vendor and entry forms.</p>
-    {% endif %}
+    <p data-label-empty-state {% if labels %}hidden{% endif %}>No labels yet. Use the New Label button above to create one.</p>
 </section>
 {% endblock %}
 

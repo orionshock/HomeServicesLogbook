@@ -323,17 +323,20 @@ def create_label(
         raise ValueError(f"Invalid color format: {color}. Must be hex (e.g., #RRGGBB)")
     
     with get_connection() as conn:
-        cursor = conn.execute(
-            """
-            INSERT INTO labels (
-                label_uid, label_name, label_color,
-                label_created_at, label_created_by
+        try:
+            cursor = conn.execute(
+                """
+                INSERT INTO labels (
+                    label_uid, label_name, label_color,
+                    label_created_at, label_created_by
+                )
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (label_uid, name, color, created_at, created_by),
             )
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (label_uid, name, color, created_at, created_by),
-        )
-        return cursor.lastrowid
+            return cursor.lastrowid
+        except sqlite3.IntegrityError:
+            raise ValueError(f"A label named \"{name}\" already exists.")
 
 
 def update_label_by_uid(

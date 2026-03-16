@@ -492,6 +492,25 @@ h2 {
     margin-bottom: 0;
 }
 
+.label-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.label-page-header h1 {
+    margin-bottom: 0;
+}
+
+.label-create-row {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px;
+    background: #fff;
+    margin-bottom: 10px;
+}
+
 .label-management-list {
     list-style: none;
     margin: 0;
@@ -510,8 +529,7 @@ h2 {
 }
 
 .label-management-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    display: flex;
     align-items: center;
     gap: 12px;
 }
@@ -530,6 +548,7 @@ h2 {
 .label-management-name {
     font-weight: 600;
     overflow-wrap: anywhere;
+    min-width: 30ch;
 }
 
 .label-management-edit-trigger {
@@ -537,15 +556,9 @@ h2 {
     background: transparent;
     color: var(--muted);
     cursor: pointer;
-    opacity: 0;
     padding: 0;
     font: inherit;
     line-height: 1;
-}
-
-.label-management-item:hover .label-management-edit-trigger,
-.label-management-item:focus-within .label-management-edit-trigger {
-    opacity: 1;
 }
 
 .label-management-name-edit {
@@ -565,6 +578,12 @@ h2 {
 .label-management-name-input {
     width: 30ch;
     max-width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 6px 10px;
+    background: #fff;
+    font: inherit;
+    color: inherit;
 }
 
 .label-management-color-column {
@@ -579,7 +598,7 @@ h2 {
 }
 
 .label-management-delete-column {
-    justify-self: end;
+    margin-left: auto;
 }
 
 .label-management-item.is-row-busy {
@@ -593,39 +612,29 @@ h2 {
     white-space: nowrap;
 }
 
-.label-color-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-top: 8px;
-}
-
-.label-color-row input[type="color"],
 .label-management-color-input {
-    width: 100px;
-    height: 50px;
+    width: 28px;
+    height: 28px;
     padding: 0;
     border: 1px solid var(--line);
-    border-radius: 8px;
+    border-radius: 6px;
     background: #fff;
     cursor: pointer;
+    flex-shrink: 0;
 }
 
-.label-color-row input[type="color"]::-webkit-color-swatch-wrapper,
 .label-management-color-input::-webkit-color-swatch-wrapper {
     padding: 0;
 }
 
-.label-color-row input[type="color"]::-webkit-color-swatch,
 .label-management-color-input::-webkit-color-swatch {
     border: none;
-    border-radius: 7px;
+    border-radius: 5px;
 }
 
-.label-color-row input[type="color"]::-moz-color-swatch,
 .label-management-color-input::-moz-color-swatch {
     border: none;
-    border-radius: 7px;
+    border-radius: 5px;
 }
 
 .label-row-error {
@@ -914,24 +923,14 @@ hr {
     }
 
     .label-management-row {
-        grid-template-columns: 1fr;
-        align-items: flex-start;
-    }
-
-    .label-management-color-column {
-        align-items: flex-start;
+        flex-wrap: wrap;
     }
 
     .label-management-delete-column {
-        justify-self: start;
+        margin-left: 0;
     }
 
     .label-picker-input-row {
-        flex-direction: column;
-    }
-
-    .label-color-row {
-        align-items: flex-start;
         flex-direction: column;
     }
 
