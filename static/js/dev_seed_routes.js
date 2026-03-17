@@ -13,8 +13,8 @@
   //   await window.HSLDevSeed.run({ vendors: 18, entriesPerVendor: 25, archiveCount: 6, dryRun: false });
 
   const DEFAULTS = {
-    vendors: 15,
-    entriesPerVendor: 22,
+    vendors: 8,
+    entriesPerVendor: 10,
     archiveCount: 5,
     pauseMsBetweenVendors: 250,
     pauseMsBetweenEntries: 200,
@@ -73,6 +73,49 @@
     "Water",
     "Solar",
     "Garage Door",
+  ];
+
+  const GENERATED_LABEL_PREFIXES = [
+    "Follow-up",
+    "Urgent",
+    "Seasonal",
+    "Annual",
+    "Pending",
+    "Resolved",
+    "Warranty",
+    "Billing",
+    "Inspection",
+    "Safety",
+    "Estimate",
+    "Install",
+  ];
+
+  const GENERATED_LABEL_SUFFIXES = [
+    "Review",
+    "Check",
+    "Call",
+    "Window",
+    "Docs",
+    "Visit",
+    "Reminder",
+    "Alert",
+    "Plan",
+    "Update",
+  ];
+
+  const LABEL_COLOR_SWATCHES = [
+    "#1d4ed8",
+    "#0f766e",
+    "#be185d",
+    "#b45309",
+    "#4c1d95",
+    "#b91c1c",
+    "#155e75",
+    "#14532d",
+    "#7c2d12",
+    "#334155",
+    "#4338ca",
+    "#0369a1",
   ];
 
   const FIRST_NAMES = [
@@ -143,6 +186,8 @@
     "Saved here so the history is easy to find later.",
   ];
 
+  const labelCacheByNameKey = new Map();
+
   function log(...args) {
     console.log(DEFAULTS.logPrefix, ...args);
   }
@@ -167,6 +212,113 @@
     let out = "";
     for (let i = 0; i < length; i += 1) out += String(randInt(0, 9));
     return out;
+  }
+
+  function normalizeLabelName(value) {
+    return String(value || "").trim().replace(/\s+/g, " ");
+  }
+
+  function toNameKey(value) {
+    return normalizeLabelName(value).toLowerCase();
+  }
+
+  function randomLabelColor() {
+    // Keep some labels uncolored so the seed data reflects optional color usage.
+    if (Math.random() < 0.33) {
+      return "";
+    }
+    return pick(LABEL_COLOR_SWATCHES);
+  }
+
+  function randomGeneratedLabelName(vendorName) {
+    const vendorToken = slugify(vendorName).split("-")[0] || "home";
+    const withVendor = Math.random() < 0.3;
+    const base = `${pick(GENERATED_LABEL_PREFIXES)} ${pick(GENERATED_LABEL_SUFFIXES)}`;
+    return withVendor ? `${base} ${vendorToken}` : base;
+  }
+
+  async function findLabelByExactName(name) {
+    const response = await fetch(`/api/labels/suggest?q=${encodeURIComponent(name)}`, {
+      method: "GET",
+      credentials: "same-origin",
+    });
+    if (!response.ok) {
+      return null;
+    }
+
+    const payload = await response.json().catch(() => []);
+    if (!Array.isArray(payload)) {
+      return null;
+    }
+
+    const wantedKey = toNameKey(name);
+    const match = payload.find(item => toNameKey(item.name) === wantedKey);
+    return match || null;
+  }
+
+  async function createLabel(name, color) {
+    const response = await fetch("/labels/new", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name,
+        color,
+      }),
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (response.ok && payload && payload.ok) {
+      return {
+        label_uid: payload.label_uid,
+        name,
+        color: color || "",
+      };
+    }
+
+    if (response.status === 409) {
+      const existing = await findLabelByExactName(name);
+      if (existing) {
+        return existing;
+      }
+    }
+
+    const message = payload && payload.error ? payload.error : `Status ${response.status}`;
+    throw new Error(`Label create failed for "${name}": ${message}`);
+  }
+
+  async function ensureLabel(name, color) {
+    const normalized = normalizeLabelName(name);
+    if (!normalized) {
+      return null;
+    }
+
+    const key = toNameKey(normalized);
+    const cached = labelCacheByNameKey.get(key);
+    if (cached) {
+      return cached;
+    }
+
+    const label = await createLabel(normalized, color);
+    labelCacheByNameKey.set(key, label);
+    return label;
+  }
+
+  async function generateLabelUids(vendorName, minCount, maxCount) {
+    const count = randInt(minCount, maxCount);
+    const uidSet = new Set();
+
+    for (let i = 0; i < count; i += 1) {
+      const name = randomGeneratedLabelName(vendorName);
+      const label = await ensureLabel(name, randomLabelColor());
+      if (label && label.label_uid) {
+        uidSet.add(label.label_uid);
+      }
+    }
+
+    return Array.from(uidSet);
   }
 
   function slugify(value) {
@@ -246,7 +398,7 @@
     }));
   }
 
-  function buildVendorPayload(vendorName, vendorLabel, index) {
+  function buildVendorPayload(vendorName, vendorLabel, index, labelUids) {
     const params = new URLSearchParams({
       vendor_name: vendorName,
       vendor_account_number: `${randInt(1000, 9999)}-${randomDigits(6)}`,
@@ -256,11 +408,11 @@
       vendor_address: randomStreetAddress(),
       vendor_notes: `Seeded vendor ${index + 1}. Primary label: ${vendorLabel}. Added for UI testing and route exercise.`,
     });
-    params.append("new_label_names", vendorLabel);
+    (labelUids || []).forEach(labelUid => params.append("label_uids", labelUid));
     return params;
   }
 
-  function buildEntryPayload(vendorName, vendorLabel, entryIndex) {
+  function buildEntryPayload(vendorName, vendorLabel, entryIndex, labelUids) {
     const titleBase = pick(TITLE_PARTS);
     const includeTicket = Math.random() < 0.55;
     const title = includeTicket
@@ -282,9 +434,7 @@
       entry_rep_name: rep,
       entry_body_text: body,
     });
-    if (entryIndex % 4 === 0) {
-      params.append("new_label_names", vendorLabel);
-    }
+    (labelUids || []).forEach(labelUid => params.append("label_uids", labelUid));
     return params;
   }
 
@@ -314,15 +464,47 @@
   }
 
   async function createVendor(vendorDef, index) {
-    const payload = buildVendorPayload(vendorDef.vendor_name, vendorDef.vendor_label, index);
+    const vendorLabel = await ensureLabel(vendorDef.vendor_label, randomLabelColor());
+    const generatedLabelUids = await generateLabelUids(vendorDef.vendor_name, 1, 2);
+    const labelUids = new Set(generatedLabelUids);
+    if (vendorLabel && vendorLabel.label_uid) {
+      labelUids.add(vendorLabel.label_uid);
+    }
+
+    const payload = buildVendorPayload(
+      vendorDef.vendor_name,
+      vendorDef.vendor_label,
+      index,
+      Array.from(labelUids),
+    );
     const response = await postForm("/vendors/new", payload);
     const vendorUid = extractVendorUid(response.url);
-    return { ...vendorDef, vendorUid };
+    return { ...vendorDef, vendorUid, seedLabelUids: Array.from(labelUids) };
   }
 
   async function createEntry(vendor, entryIndex) {
-    const payload = buildEntryPayload(vendor.vendor_name, vendor.vendor_label, entryIndex);
+    const entryLabelUids = new Set();
+    if (Array.isArray(vendor.seedLabelUids)) {
+      vendor.seedLabelUids.forEach(labelUid => {
+        if (Math.random() < 0.35) {
+          entryLabelUids.add(labelUid);
+        }
+      });
+    }
+
+    if (Math.random() < 0.45) {
+      const generated = await generateLabelUids(vendor.vendor_name, 1, 1);
+      generated.forEach(labelUid => entryLabelUids.add(labelUid));
+    }
+
+    const payload = buildEntryPayload(
+      vendor.vendor_name,
+      vendor.vendor_label,
+      entryIndex,
+      Array.from(entryLabelUids),
+    );
     await postForm(`/vendor/${encodeURIComponent(vendor.vendorUid)}/entries`, payload);
+    return Array.from(entryLabelUids);
   }
 
   async function archiveVendor(vendor) {
@@ -331,6 +513,7 @@
 
   async function run(options = {}) {
     const cfg = { ...DEFAULTS, ...options };
+    const reportProgress = typeof cfg.onProgress === "function" ? cfg.onProgress : () => {};
     const pauseMsBetweenVendors = Math.max(MIN_ACTION_PAUSE_MS, Number(cfg.pauseMsBetweenVendors) || 0);
     const pauseMsBetweenEntries = Math.max(MIN_ACTION_PAUSE_MS, Number(cfg.pauseMsBetweenEntries) || 0);
     const vendorPool = buildVendorPool();
@@ -349,21 +532,30 @@
     }
 
     log(`Creating ${cfg.vendors} vendors and ${cfg.entriesPerVendor} entries per vendor...`);
+    reportProgress(`Starting seed: 0/${cfg.vendors} vendors, 0/${cfg.vendors * cfg.entriesPerVendor} entries...`);
 
     const createdVendors = [];
+    const seenLabelUids = new Set();
+    let entriesCreated = 0;
 
     for (let i = 0; i < cfg.vendors; i += 1) {
       const vendorDef = vendorPool[i];
       log(`Creating vendor ${i + 1}/${cfg.vendors}: ${vendorDef.vendor_name}`);
+      reportProgress(`Creating vendor ${i + 1}/${cfg.vendors}: ${vendorDef.vendor_name}`);
       const vendor = await createVendor(vendorDef, i);
       createdVendors.push(vendor);
+      (vendor.seedLabelUids || []).forEach(labelUid => seenLabelUids.add(labelUid));
+      reportProgress(`Created vendor ${i + 1}/${cfg.vendors}. Entries progress: ${entriesCreated}/${cfg.vendors * cfg.entriesPerVendor}`);
       await sleep(pauseMsBetweenVendors);
 
       for (let j = 0; j < cfg.entriesPerVendor; j += 1) {
         if ((j + 1) % 5 === 0 || j === 0) {
           log(`  entries ${j + 1}/${cfg.entriesPerVendor} for ${vendor.vendor_name}`);
         }
-        await createEntry(vendor, j);
+        reportProgress(`Creating entry ${j + 1}/${cfg.entriesPerVendor} for ${vendor.vendor_name} (${entriesCreated + 1}/${cfg.vendors * cfg.entriesPerVendor} total)`);
+        const entryLabelUids = await createEntry(vendor, j);
+        entriesCreated += 1;
+        entryLabelUids.forEach(labelUid => seenLabelUids.add(labelUid));
         await sleep(pauseMsBetweenEntries);
       }
     }
@@ -372,6 +564,7 @@
     for (let i = 0; i < toArchive.length; i += 1) {
       const vendor = toArchive[i];
       log(`Archiving vendor: ${vendor.vendor_name}`);
+      reportProgress(`Archiving vendor ${i + 1}/${toArchive.length}: ${vendor.vendor_name}`);
       await archiveVendor(vendor);
       if (i < toArchive.length - 1) {
         await sleep(pauseMsBetweenVendors);
@@ -380,12 +573,17 @@
 
     log("Done.", {
       vendorsCreated: createdVendors.length,
-      entriesCreated: createdVendors.length * cfg.entriesPerVendor,
+      entriesCreated,
+      labelsGenerated: seenLabelUids.size,
       archivedVendors: toArchive.length,
     });
 
+    reportProgress(`Seed complete: vendors ${createdVendors.length}, entries ${entriesCreated}, labels ${seenLabelUids.size}`);
+
     return {
       vendorsCreated: createdVendors,
+      entriesCreated,
+      labelsGenerated: seenLabelUids.size,
       archivedVendorUids: toArchive.map(v => v.vendorUid),
     };
   }
@@ -409,8 +607,8 @@
       runButton.disabled = true;
       setStatus("Seeding in progress. Please wait...");
       try {
-        const result = await run();
-        setStatus(`Seed complete: ${result.vendorsCreated.length} vendors created.`);
+        const result = await run({ onProgress: setStatus });
+        setStatus(`Seed complete. Vendors: ${result.vendorsCreated.length}, Entries: ${result.entriesCreated}, Labels: ${result.labelsGenerated}`);
       } catch (error) {
         console.error("[HSL Dev Seed] Run failed", error);
         setStatus("Seed run failed. Check browser console for details.");
