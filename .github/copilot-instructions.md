@@ -12,6 +12,7 @@ Core mental model:
 - **Vendor** = the company or person who services the home
 - **Entry** = a chronological note in the vendor history
 - **Attachment** = a file related to an entry
+- **Label** = a lightweight sorting/filtering aid for organization and display
 - Everything important should be organized around the vendor timeline
 
 ## Product principles
@@ -48,6 +49,7 @@ Current core model:
 - vendors
 - entries
 - attachments
+- labels
 
 Conceptual model:
 - Vendor -> many Entries
@@ -152,6 +154,25 @@ Typical useful vendor info may include:
 Most of these should remain optional.
 It is acceptable to keep some flexible vendor data in JSON rather than separate columns.
 
+## Label rules
+Labels are organizational metadata, not the source record.
+
+Use labels to:
+- help users filter and group vendors/entries in the UI
+- improve quick scanning and list organization
+- support optional workflows without changing timeline history
+
+Do not use labels to:
+- replace chronological entry notes as the primary record
+- encode critical relational data that belongs in first-class tables/fields
+- force rigid taxonomy requirements on users
+
+Implementation guidance:
+- keep label assignment optional and lightweight
+- allow users to add/remove labels without rewriting history
+- prefer simple, explicit label behavior over automated or inferred labeling
+- treat labels as display/query helpers, while `entries` remain the center of gravity
+
 ## Coding style
 - Write clear, direct, readable Python.
 - Prefer small functions.
@@ -162,7 +183,7 @@ It is acceptable to keep some flexible vendor data in JSON rather than separate 
 - Do not add frameworks or patterns “just in case.”
 
 ## Scope control
-This project is now in active development.
+This project should start with a small MVP.
 
 Prioritize:
 1. vendor records
@@ -171,8 +192,8 @@ Prioritize:
 4. document attachment
 5. simple ICS export
 
-Still defer until later unless explicitly requested:
-- advanced labeling/tagging
+Defer until later:
+- advanced label automation or complex tagging systems
 - multi-database support
 - complex auth
 - Home Assistant integration details
