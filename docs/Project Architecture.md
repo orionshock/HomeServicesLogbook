@@ -58,7 +58,7 @@ HomeServicesLogbook-Dev/
 |-- templates/
 |   |-- base.html
 |   |-- home.html
-|   |-- vendors.html
+|   |-- vendor_listing.html
 |   |-- vendor_form.html
 |   |-- vendor_detail.html
 |   |-- entry_form.html

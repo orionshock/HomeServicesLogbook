@@ -128,7 +128,7 @@ def vendor_list(request: Request, show_archived: int | None = None):
     vendors = list_vendors(include_archived)
     response = render_template(
         request,
-        "vendors.html",
+        "vendor_listing.html",
         {
             "breadcrumbs": [
                 {"label": "Home", "url": "/"},
