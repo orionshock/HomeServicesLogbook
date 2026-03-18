@@ -1,8 +1,5 @@
 # Home Services Logbook TODO
 
-## Global UX
-- [ ] Improve form validation feedback (clear errors, inline guidance).
-
 ## Entries
 ### Log History Behavior
 - [ ] Show only the 10 most recent entries. With a more button?

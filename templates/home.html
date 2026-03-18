@@ -1,26 +1,88 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Home - Home Services Logbook</title>
+	<link rel="icon" type="image/png" href="/static/favicon.png">
+	<link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body class="app-shell">
+	<header class="app-header">
+		<div class="app-nav" aria-hidden="true"></div>
+		<div class="app-actor">
+			Current Actor: {{ current_actor.display_name }}
+		</div>
+	</header>
 
-{% block title %}Home — Home Services Logbook{% endblock %}
+	<main class="app-main">
+		<section class="content-section home-site-panel" aria-labelledby="home-site-heading">
+			<p class="home-site-kicker">Site</p>
+			<h1 id="home-site-heading" class="home-site-title">Home Site Placeholder</h1>
+			<p class="home-site-address">123 Example Lane, Hometown, ST 00000</p>
+			<p class="home-site-description">Replace this with your home/location summary once Site Settings is implemented.</p>
+		</section>
 
-{% block content %}
-<h1>Home Services Logbook</h1>
-<p>A simple logbook for tracking the vendors and service providers that look after your home.</p>
-<p>Use this app to record support calls, service visits, account details, and uploaded documents — all organized by vendor.</p>
+		<nav class="home-launcher" aria-label="Main Navigation">
+			<a class="home-tile" href="#" aria-disabled="true" tabindex="-1">
+				<span class="home-tile-icon" aria-hidden="true">📝</span>
+				<span class="home-tile-text">
+					<span class="home-tile-title">New Entry</span>
+					<span class="home-tile-subtitle">Quickly log a new service interaction (coming soon).</span>
+				</span>
+			</a>
 
-{% if current_actor.actor_id == "devUser" %}
-<section class="content-section">
-	<h2>Developer Tools</h2>
-	<p>Seed test data for route and UI exercise.</p>
-	<p>
-		<button type="button" id="run-seed-file" class="btn btn-secondary">Run Seed File</button>
-	</p>
-	<p id="seed-status" class="entry-meta" aria-live="polite"></p>
-</section>
-{% endif %}
-{% endblock %}
+			<a class="home-tile" href="#" aria-disabled="true" tabindex="-1">
+				<span class="home-tile-icon" aria-hidden="true">📚</span>
+				<span class="home-tile-text">
+					<span class="home-tile-title">Logbook</span>
+					<span class="home-tile-subtitle">Browse chronological history across activity (coming soon).</span>
+				</span>
+			</a>
 
-{% block scripts %}
-{% if current_actor.actor_id == "devUser" %}
-<script src="/static/js/dev_seed_routes.js?v=20260316a"></script>
-{% endif %}
-{% endblock %}
+			<a class="home-tile" href="/vendors">
+				<span class="home-tile-icon" aria-hidden="true">🏢</span>
+				<span class="home-tile-text">
+					<span class="home-tile-title">Vendors</span>
+					<span class="home-tile-subtitle">Open vendor records, details, and timelines.</span>
+				</span>
+			</a>
+
+			<a class="home-tile" href="/labels">
+				<span class="home-tile-icon" aria-hidden="true">🏷️</span>
+				<span class="home-tile-text">
+					<span class="home-tile-title">Labels</span>
+					<span class="home-tile-subtitle">Manage labels used to organize vendors and entries.</span>
+				</span>
+			</a>
+
+			<div class="home-tile-spacer" aria-hidden="true"></div>
+
+			<a class="home-tile" href="#" aria-disabled="true" tabindex="-1">
+				<span class="home-tile-icon" aria-hidden="true">⚙️</span>
+				<span class="home-tile-text">
+					<span class="home-tile-title">Site Settings</span>
+					<span class="home-tile-subtitle">Configure site metadata and defaults (coming soon).</span>
+				</span>
+			</a>
+		</nav>
+
+		{% if current_actor.actor_id == "devUser" %}
+		<section class="content-section">
+			<h2>Developer Tools</h2>
+			<p>Seed test data for route and UI exercise.</p>
+			<p>
+				<button type="button" id="run-seed-file" class="btn btn-secondary">Run Seed File</button>
+			</p>
+			<p id="seed-status" class="entry-meta" aria-live="polite"></p>
+		</section>
+		{% endif %}
+	</main>
+
+	<script src="/static/js/external_links.js"></script>
+	<script src="/static/js/time.js"></script>
+	{% if current_actor.actor_id == "devUser" %}
+	<script src="/static/js/dev_seed_routes.js?v=20260316a"></script>
+	{% endif %}
+</body>
+</html>
