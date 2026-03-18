@@ -19,7 +19,7 @@
 </p>
 
 <section class="content-section">
-    <form method="post" action="{{ form_action }}" autocomplete="off">
+    <form method="post" action="{{ form_action }}" autocomplete="off" data-unsaved-warning="true">
         <div class="form-field">
             <label for="vendor_name">Vendor Name *</label>
             <input type="text" id="vendor_name" name="vendor_name" required value="{% if vendor %}{{ vendor.vendor_name or '' }}{% endif %}">
@@ -66,5 +66,6 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="/static/js/unsaved_changes.js"></script>
 <script src="/static/js/label_picker.js"></script>
 {% endblock %}

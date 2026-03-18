@@ -17,7 +17,7 @@
         <section class="content-section entry-form-primary">
             <h2>{{ page_title }}</h2>
 
-            <form id="entry-form" method="post" action="{{ form_action }}" enctype="multipart/form-data" autocomplete="off">
+            <form id="entry-form" method="post" action="{{ form_action }}" enctype="multipart/form-data" autocomplete="off" data-unsaved-warning="true">
                 <div class="entry-meta-grid">
                     <div class="form-field entry-meta-full-width">
                         <label for="entry_title" title="Optional">Title</label>
@@ -140,6 +140,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="/static/js/unsaved_changes.js"></script>
 <script src="/static/js/entry_form.js"></script>
 <script src="/static/js/label_picker.js"></script>
 {% endblock %}
