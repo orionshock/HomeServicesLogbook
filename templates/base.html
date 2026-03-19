@@ -15,10 +15,17 @@
 </head>
 <body class="app-shell">
     <header class="app-header">
-        <nav class="app-nav">
-            <a href="/">Home</a> |
-            <a href="/vendors">Vendors</a> |
-            <a href="/labels">Labels</a>
+        <nav class="app-nav" aria-label="Main Navigation">
+            <div class="app-nav-group">
+                <a class="app-nav-link is-disabled" href="#" aria-disabled="true" tabindex="-1">New Entry</a>
+                <a class="app-nav-link is-disabled" href="#" aria-disabled="true" tabindex="-1">Logbook</a>
+                <a class="app-nav-link" href="/vendors">Vendors</a>
+            </div>
+            <span class="app-nav-divider" aria-hidden="true"></span>
+            <div class="app-nav-group app-nav-group-secondary">
+                <a class="app-nav-link" href="/labels">Label Management</a>
+                <a class="app-nav-link is-disabled" href="#" aria-disabled="true" tabindex="-1">Site Settings</a>
+            </div>
         </nav>
         {% include "partials/actor_control.html" %}
     </header>

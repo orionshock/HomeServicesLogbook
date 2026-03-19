@@ -15,8 +15,50 @@
 
 .app-nav {
     display: flex;
-    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
     font-weight: 600;
+}
+
+.app-nav-group {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.app-nav-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.25rem;
+    padding: 0.3rem 0.75rem;
+    border-radius: 999px;
+    color: var(--text);
+    text-decoration: none;
+    background: rgba(255, 255, 255, 0.45);
+    border: 1px solid transparent;
+}
+
+.app-nav-link:hover {
+    background: rgba(241, 236, 226, 0.9);
+    border-color: var(--line);
+}
+
+.app-nav-link.is-disabled {
+    color: var(--muted);
+    background: rgba(243, 239, 231, 0.85);
+    cursor: default;
+    pointer-events: none;
+}
+
+.app-nav-divider {
+    width: 2px;
+    min-height: 2rem;
+    align-self: stretch;
+    border-radius: 999px;
+    background: linear-gradient(to bottom, rgba(120, 104, 84, 0.08), rgba(120, 104, 84, 0.6), rgba(120, 104, 84, 0.08));
+    box-shadow: 0 0 0 1px rgba(255, 252, 246, 0.7);
 }
 
 .app-actor {
@@ -186,5 +228,18 @@
     .app-header {
         flex-direction: column;
         align-items: flex-start;
+    }
+
+    .app-nav {
+        width: 100%;
+    }
+
+    .app-nav-divider {
+        width: 100%;
+        height: 2px;
+        min-height: 0;
+        align-self: auto;
+        background: linear-gradient(to right, rgba(120, 104, 84, 0.08), rgba(120, 104, 84, 0.55), rgba(120, 104, 84, 0.08));
+        box-shadow: 0 0 0 1px rgba(255, 252, 246, 0.65);
     }
 }

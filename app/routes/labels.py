@@ -37,7 +37,7 @@ def labels_list(request: Request):
         {
             "breadcrumbs": [
                 {"label": "Home", "url": "/"},
-                {"label": "Labels", "url": None},
+                {"label": "Label Management", "url": None},
             ],
             "labels": list_labels(),
         },
