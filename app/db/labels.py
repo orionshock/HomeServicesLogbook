@@ -149,6 +149,24 @@ def list_labels_for_vendor_id(vendor_id: int) -> list[sqlite3.Row]:
         ).fetchall()
 
 
+def list_labels_for_vendor_ids(vendor_ids: list[int]) -> list[sqlite3.Row]:
+    unique_vendor_ids = list(dict.fromkeys(vendor_ids))
+    if not unique_vendor_ids:
+        return []
+
+    placeholders = ", ".join("?" for _ in unique_vendor_ids)
+    query = f"""
+        SELECT vl.vendor_id, l.id, l.label_uid, l.label_name AS name, l.label_color AS color
+        FROM vendor_labels vl
+        JOIN labels l ON l.id = vl.label_id
+        WHERE vl.vendor_id IN ({placeholders})
+        ORDER BY vl.vendor_id, l.label_name COLLATE NOCASE
+    """
+
+    with get_connection() as conn:
+        return conn.execute(query, unique_vendor_ids).fetchall()
+
+
 def replace_vendor_labels(vendor_id: int, label_ids: list[int]) -> None:
     unique_label_ids = list(dict.fromkeys(label_ids))
     with get_connection() as conn:

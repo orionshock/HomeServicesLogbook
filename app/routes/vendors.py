@@ -1,3 +1,4 @@
+import string
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Form, HTTPException, Request
@@ -12,6 +13,7 @@ from app.db import (
     list_labels,
     list_labels_for_entry_id,
     list_labels_for_vendor_id,
+    list_labels_for_vendor_ids,
     list_vendors,
     replace_vendor_labels,
     resolve_submitted_labels,
@@ -22,6 +24,8 @@ from app.routes import render_template
 from app.utils import make_uid, normalize_required_text, utc_now_iso
 
 router = APIRouter()
+
+AZ_SECTION_KEYS = [*string.ascii_uppercase, "0..9", "#"]
 
 
 def normalize_portal_url(value: str) -> str | None:
@@ -49,6 +53,108 @@ def normalize_portal_url(value: str) -> str | None:
 def _normalize_optional_text(value: str) -> str | None:
     normalized = (value or "").strip()
     return normalized or None
+
+
+def _vendor_name_sort_key(vendor: dict) -> str:
+    return str(vendor["vendor_name"]).casefold()
+
+
+def _az_section_key(vendor_name: str) -> str:
+    first_character = (vendor_name or "").strip()[:1]
+    if not first_character:
+        return "#"
+
+    if first_character.isdigit():
+        return "0..9"
+
+    uppercase_character = first_character.upper()
+    if uppercase_character in string.ascii_uppercase:
+        return uppercase_character
+
+    return "#"
+
+
+def _build_vendor_listing_rows(vendors: list) -> list[dict]:
+    labels_by_vendor_id: dict[int, list[dict]] = {}
+    vendor_ids = [int(vendor["id"]) for vendor in vendors]
+
+    for row in list_labels_for_vendor_ids(vendor_ids):
+        labels_by_vendor_id.setdefault(int(row["vendor_id"]), []).append(
+            {
+                "id": int(row["id"]),
+                "label_uid": row["label_uid"],
+                "name": row["name"],
+                "color": row["color"],
+            }
+        )
+
+    listing_rows: list[dict] = []
+    for vendor in vendors:
+        vendor_id = int(vendor["id"])
+        labels = labels_by_vendor_id.get(vendor_id, [])
+        label_names = [label["name"] for label in labels]
+        listing_rows.append(
+            {
+                "id": vendor_id,
+                "vendor_uid": vendor["vendor_uid"],
+                "vendor_name": vendor["vendor_name"],
+                "vendor_archived_at": vendor["vendor_archived_at"],
+                "labels": labels,
+                "label_names": label_names,
+                "search_text": " ".join([vendor["vendor_name"], *label_names]).strip(),
+            }
+        )
+
+    return sorted(listing_rows, key=_vendor_name_sort_key)
+
+
+def _build_az_sections(vendors: list[dict]) -> list[dict]:
+    grouped_vendors = {section_key: [] for section_key in AZ_SECTION_KEYS}
+
+    for vendor in vendors:
+        grouped_vendors[_az_section_key(vendor["vendor_name"])].append(vendor)
+
+    return [
+        {
+            "key": section_key,
+            "title": section_key,
+            "vendors": grouped_vendors[section_key],
+        }
+        for section_key in AZ_SECTION_KEYS
+        if grouped_vendors[section_key]
+    ]
+
+
+def _build_category_sections(vendors: list[dict]) -> list[dict]:
+    grouped_sections: dict[str, dict] = {}
+    uncategorized_vendors: list[dict] = []
+
+    for vendor in vendors:
+        if vendor["labels"]:
+            for label in vendor["labels"]:
+                section = grouped_sections.setdefault(
+                    str(label["label_uid"]),
+                    {
+                        "key": str(label["label_uid"]),
+                        "title": label["name"],
+                        "vendors": [],
+                    },
+                )
+                section["vendors"].append(vendor)
+        else:
+            uncategorized_vendors.append(vendor)
+
+    ordered_sections = sorted(grouped_sections.values(), key=lambda section: section["title"].casefold())
+    if uncategorized_vendors:
+        ordered_sections.append(
+            {
+                "key": "uncategorized",
+                "title": "Uncategorized",
+                "vendors": uncategorized_vendors,
+            }
+        )
+
+    return ordered_sections
 
 
 def _select_labels_for_form(
@@ -247,6 +353,7 @@ def vendor_list(request: Request, show_archived: int | None = None):
         include_archived = request.cookies.get("show_archived_vendors") == "1"
 
     vendors = list_vendors(include_archived)
+    listing_rows = _build_vendor_listing_rows(vendors)
     response = render_template(
         request,
         "vendor_listing.html",
@@ -255,7 +362,9 @@ def vendor_list(request: Request, show_archived: int | None = None):
                 {"label": "Home", "url": "/"},
                 {"label": "Vendors", "url": None},
             ],
-            "vendors": vendors,
+            "vendors": listing_rows,
+            "az_sections": _build_az_sections(listing_rows),
+            "category_sections": _build_category_sections(listing_rows),
             "show_archived": include_archived,
         },
     )

@@ -1,5 +1,24 @@
 {% extends "base.html" %}
 
+{% macro render_grouped_view(view_name, sections, hidden=False) -%}
+<div class="vendor-listing-view{% if not hidden %} is-active{% endif %}"{% if hidden %} hidden{% endif %} data-vendor-view="{{ view_name }}">
+    {% for section in sections %}
+    <section class="vendor-group-section" data-vendor-section data-section-title="{{ section.title }}">
+        <h2 class="vendor-group-title">{{ section.title }}</h2>
+        <hr>
+        <ol class="vendor-group-list">
+            {% for vendor in section.vendors %}
+            <li class="vendor-item" data-vendor-item data-name="{{ vendor.vendor_name }}" data-search="{{ vendor.search_text }}">
+                <a href="/vendor/{{ vendor.vendor_uid }}">{{ vendor.vendor_name }}</a>
+                {% if vendor.vendor_archived_at %}<span class="archived-badge">Archived</span>{% endif %}
+            </li>
+            {% endfor %}
+        </ol>
+    </section>
+    {% endfor %}
+</div>
+{%- endmacro %}
+
 {% block title %}Vendors — Home Services Logbook{% endblock %}
 
 {% block content %}
@@ -14,23 +33,23 @@
 </div>
 
 {% if vendors %}
-<div class="vendor-search-bar">
-    <input type="text" id="vendorSearch" placeholder="Filter vendors…" autocomplete="off">
+<div class="vendors-toolbar">
+    <div class="vendor-search-bar">
+        <label class="vendor-search-label" for="vendorSearch">Filter vendors</label>
+        <input type="text" id="vendorSearch" placeholder="Filter vendors…" autocomplete="off">
+    </div>
+
+    <div class="vendor-view-mode-row" role="group" aria-label="Vendor list view mode">
+        <span class="vendor-view-mode-label">View:</span>
+        <button type="button" class="btn btn-secondary vendor-view-toggle is-active" data-view-mode="az" aria-pressed="true">A-Z</button>
+        <button type="button" class="btn btn-secondary vendor-view-toggle" data-view-mode="category" aria-pressed="false">By Category</button>
+    </div>
 </div>
 
-<section class="vendor-category-section" data-category="All Vendors">
-    <h2 class="vendor-category-header">
-        <span class="category-toggle-icon">▾</span>All Vendors
-    </h2>
-    <ul class="vendor-category-list">
-        {% for vendor in vendors %}
-        <li class="vendor-item" data-name="{{ vendor.vendor_name }}" data-category="All Vendors">
-            <a href="/vendor/{{ vendor.vendor_uid }}">{{ vendor.vendor_name }}</a>
-            {% if vendor.vendor_archived_at %}<span class="archived-badge">Archived</span>{% endif %}
-        </li>
-        {% endfor %}
-    </ul>
-</section>
+<div class="vendor-listings" data-vendor-listings>
+    {{ render_grouped_view("az", az_sections) }}
+    {{ render_grouped_view("category", category_sections, hidden=True) }}
+</div>
 
 {% else %}
 <p>No vendors yet. Add your first vendor to get started.</p>

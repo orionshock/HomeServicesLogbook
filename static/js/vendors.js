@@ -1,113 +1,94 @@
 (function () {
     "use strict";
 
-    var CATEGORY_STATE_KEY = "vendor-category-state";
-    var FILTER_TEXT_KEY = "vendor-filter-text";
+    var VIEW_MODE_KEY = "vendors-view-mode";
 
-    function getCategoryState() {
+    function getSavedViewMode() {
         try {
-            return JSON.parse(sessionStorage.getItem(CATEGORY_STATE_KEY) || "{}");
+            return localStorage.getItem(VIEW_MODE_KEY) || "az";
         } catch (_) {
-            return {};
+            return "az";
         }
     }
 
-    function saveCategoryState(state) {
+    function saveViewMode(viewMode) {
         try {
-            sessionStorage.setItem(CATEGORY_STATE_KEY, JSON.stringify(state));
+            localStorage.setItem(VIEW_MODE_KEY, viewMode);
         } catch (_) {}
     }
 
-    function getFilterText() {
-        try {
-            return sessionStorage.getItem(FILTER_TEXT_KEY) || "";
-        } catch (_) {
-            return "";
-        }
+    function getActiveView() {
+        return document.querySelector(".vendor-listing-view.is-active");
     }
 
-    function saveFilterText(value) {
-        try {
-            sessionStorage.setItem(FILTER_TEXT_KEY, value);
-        } catch (_) {}
+    function updateViewButtons(buttons, activeViewMode) {
+        buttons.forEach(function (button) {
+            var isActive = button.dataset.viewMode === activeViewMode;
+            button.classList.toggle("is-active", isActive);
+            button.setAttribute("aria-pressed", isActive ? "true" : "false");
+        });
     }
 
-    // Set a category section's collapsed state and update its toggle icon.
-    function setCollapsed(section, collapsed) {
-        if (collapsed) {
-            section.classList.add("is-collapsed");
-        } else {
-            section.classList.remove("is-collapsed");
-        }
-        var icon = section.querySelector(".category-toggle-icon");
-        if (icon) {
-            icon.textContent = collapsed ? "\u25b8" : "\u25be"; // ▸ or ▾
-        }
-    }
-
-    // Show or hide vendor items based on the filter query.
-    // Hides entire category sections when none of their vendors match.
     function applyFilter(query) {
-        var lower = query.toLowerCase().trim();
-        var sections = document.querySelectorAll(".vendor-category-section");
+        var activeView = getActiveView();
+        var lowerQuery = (query || "").toLowerCase().trim();
 
-        sections.forEach(function (section) {
-            var items = section.querySelectorAll(".vendor-item");
+        if (!activeView) {
+            return;
+        }
+
+        activeView.querySelectorAll("[data-vendor-section]").forEach(function (section) {
             var visibleCount = 0;
 
-            items.forEach(function (item) {
-                var name = (item.dataset.name || "").toLowerCase();
-                var category = (item.dataset.category || "").toLowerCase();
-                var matches = !lower || name.includes(lower) || category.includes(lower);
-                item.style.display = matches ? "" : "none";
+            section.querySelectorAll("[data-vendor-item]").forEach(function (item) {
+                var searchText = (item.dataset.search || item.dataset.name || "").toLowerCase();
+                var matches = !lowerQuery || searchText.includes(lowerQuery);
+                item.hidden = !matches;
                 if (matches) {
-                    visibleCount++;
+                    visibleCount += 1;
                 }
             });
 
-            // Hide the whole section when no vendors match.
-            section.style.display = visibleCount > 0 ? "" : "none";
+            section.hidden = visibleCount === 0;
         });
+    }
+
+    function setActiveView(viewMode, views, buttons, searchInput) {
+        var normalizedViewMode = viewMode === "category" ? "category" : "az";
+
+        views.forEach(function (view) {
+            var isActive = view.dataset.vendorView === normalizedViewMode;
+            view.hidden = !isActive;
+            view.classList.toggle("is-active", isActive);
+        });
+
+        updateViewButtons(buttons, normalizedViewMode);
+        saveViewMode(normalizedViewMode);
+        applyFilter(searchInput ? searchInput.value : "");
     }
 
     function init() {
         var searchInput = document.getElementById("vendorSearch");
-        var sections = document.querySelectorAll(".vendor-category-section");
-        var state = getCategoryState();
+        var views = Array.prototype.slice.call(document.querySelectorAll(".vendor-listing-view"));
+        var viewButtons = Array.prototype.slice.call(document.querySelectorAll(".vendor-view-toggle"));
 
-        // Restore each category's open/closed state. Default to open.
-        sections.forEach(function (section) {
-            var key = section.dataset.category;
-            var isOpen = Object.prototype.hasOwnProperty.call(state, key) ? state[key] : true;
-            setCollapsed(section, !isOpen);
-        });
+        if (!views.length) {
+            return;
+        }
 
-        // Wire up click handlers on category headers.
-        document.querySelectorAll(".vendor-category-header").forEach(function (header) {
-            header.addEventListener("click", function () {
-                var section = header.closest(".vendor-category-section");
-                if (!section) { return; }
-                var collapsed = section.classList.contains("is-collapsed");
-                var key = section.dataset.category;
-                var currentState = getCategoryState();
-                currentState[key] = collapsed; // true = open after toggle
-                saveCategoryState(currentState);
-                setCollapsed(section, !collapsed);
+        viewButtons.forEach(function (button) {
+            button.addEventListener("click", function () {
+                setActiveView(button.dataset.viewMode, views, viewButtons, searchInput);
             });
         });
 
-        // Restore saved filter text and wire up live filtering.
         if (searchInput) {
-            var saved = getFilterText();
-            if (saved) {
-                searchInput.value = saved;
-                applyFilter(saved);
-            }
             searchInput.addEventListener("input", function () {
-                saveFilterText(searchInput.value);
                 applyFilter(searchInput.value);
             });
         }
+
+        setActiveView(getSavedViewMode(), views, viewButtons, searchInput);
     }
 
     document.addEventListener("DOMContentLoaded", init);
