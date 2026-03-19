@@ -1,0 +1,36 @@
+<div class="app-actor actor-control" data-actor-control>
+    <details class="actor-menu" data-actor-menu>
+        <summary class="actor-menu-summary">User: <span id="current-actor-display" data-current-actor-display>{{ current_actor.display_name }}</span></summary>
+        <div class="actor-menu-panel" role="menu" aria-label="Current user controls">
+            <button type="button" class="actor-menu-action" data-open-actor-dialog>Change Session User</button>
+            <form method="post" action="/actor/reset" data-actor-reset-form {% if current_actor.source != "override" %}hidden{% endif %}>
+                <button type="submit" class="actor-menu-action actor-menu-action-reset">Reset Session User</button>
+            </form>
+        </div>
+    </details>
+
+    <dialog class="actor-dialog" data-actor-dialog>
+        <form method="post" action="/actor/set" class="actor-dialog-form" data-actor-set-form>
+            <h2 class="actor-dialog-title">Change Session User</h2>
+            <div class="form-field">
+                <label for="actor-id-input" class="actor-dialog-label">User name</label>
+                <div style="max-width: 300px;">
+                    <input id="actor-id-input" name="actor_id" type="text" required autocomplete="off">
+                </div>
+            </div>
+            <p class="actor-dialog-error" data-actor-error hidden></p>
+            <div class="actor-dialog-actions">
+                {% if current_actor.source == "override" %}
+                <form method="post" action="/actor/reset" style="border: none; padding: 0; margin: 0;" data-actor-reset-inline>
+                    <button type="submit" class="btn btn-secondary">Reset Session User</button>
+                </form>
+                {% endif %}
+                <button type="button" class="btn btn-secondary" data-close-actor-dialog>Cancel</button>
+                <button type="submit" class="btn btn-primary">OK</button>
+            </div>
+        </form>
+
+
+    </dialog>
+</div>
+<script src="/static/js/actor_control.js"></script>

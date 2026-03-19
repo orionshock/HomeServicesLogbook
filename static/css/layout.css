@@ -25,6 +25,108 @@
     white-space: nowrap;
 }
 
+.actor-menu {
+    position: relative;
+}
+
+.actor-menu-summary {
+    list-style: none;
+    cursor: pointer;
+}
+
+.actor-menu-summary::-webkit-details-marker {
+    display: none;
+}
+
+.actor-menu-panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    min-width: 220px;
+    display: grid;
+    gap: 8px;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    z-index: 30;
+}
+
+.actor-menu-action {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface-strong);
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    font-size: 0.9rem;
+    padding: 8px 10px;
+    cursor: pointer;
+}
+
+.actor-menu-action:hover:enabled {
+    background: #e6dbca;
+}
+
+.actor-menu-action:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.actor-menu form {
+    margin: 0;
+}
+
+.actor-dialog {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px;
+    width: min(480px, calc(100vw - 40px));
+}
+
+.actor-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.actor-dialog-form,
+.actor-dialog-reset-form {
+    margin: 0;
+}
+
+.actor-dialog-title {
+    margin: 0 0 10px;
+    font-size: 1.05rem;
+}
+
+.actor-dialog-label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.actor-dialog-error {
+    margin: 8px 0 0;
+    font-size: 0.9rem;
+    color: var(--danger);
+}
+
+.actor-dialog-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    justify-content: flex-end;
+}
+
+.actor-dialog-actions button {
+    min-width: 100px;
+}
+
+.actor-dialog-reset-form {
+    margin-top: 10px;
+}
+
 .app-main {
     width: 100%;
     margin: 0 auto;

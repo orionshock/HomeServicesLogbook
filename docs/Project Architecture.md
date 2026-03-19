@@ -122,7 +122,26 @@ Shared route utilities:
 - BASE_DIR path resolution.
 - MAX_UPLOAD_BYTES (10 MB).
 - Template rendering helper with current actor context.
-- Temporary actor resolver (hardcoded dev actor).
+- Current actor resolver with explicit precedence:
+  - actor_override cookie
+  - trusted upstream header (config-gated)
+  - default user
+- Actor helper routes:
+  - POST /actor/set
+  - POST /actor/reset
+
+## Environment Configuration
+
+Actor resolution behavior is controlled by these environment variables:
+
+- TRUST_UPSTREAM_AUTH
+  - Default: false
+  - When true, app can read actor identity from a trusted upstream header.
+  - When false, upstream header values are ignored.
+
+- UPSTREAM_ACTOR_HEADER
+  - Default: X-Remote-User
+  - Header name used for upstream actor identity when TRUST_UPSTREAM_AUTH is enabled.
 
 ## app/db/
 
@@ -140,6 +159,11 @@ Shared route utilities:
 ## Home
 
 - GET / -> Home page
+
+## Actor
+
+- POST /actor/set -> Set actor_override cookie from form actor_id
+- POST /actor/reset -> Clear actor_override cookie
 
 ## Vendors
 

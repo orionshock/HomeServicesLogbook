@@ -20,9 +20,7 @@
             <a href="/vendors">Vendors</a> |
             <a href="/labels">Labels</a>
         </nav>
-        <div class="app-actor">
-            Current Actor: {{ current_actor.display_name }}
-        </div>
+        {% include "partials/actor_control.html" %}
     </header>
     <main class="app-main">
         {% if breadcrumbs %}

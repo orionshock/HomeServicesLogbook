@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.staticfiles import StaticFiles
 
-from app.routes import _resolve_current_actor, render_template
+from app.routes import _resolve_current_actor, render_template, router as actor_router
 from app.routes.entries import router as entries_router
 from app.routes.home import lifespan, router as home_router
 from app.routes.labels import router as labels_router
@@ -78,6 +78,7 @@ async def actor_context_middleware(request: Request, call_next):
 
 
 app.include_router(home_router)
+app.include_router(actor_router)
 app.include_router(vendors_router)
 app.include_router(entries_router)
 app.include_router(labels_router)

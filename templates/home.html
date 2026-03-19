@@ -8,15 +8,14 @@
 	<link rel="stylesheet" href="/static/css/base.css">
 	<link rel="stylesheet" href="/static/css/layout.css">
 	<link rel="stylesheet" href="/static/css/components.css">
+	<link rel="stylesheet" href="/static/css/forms.css">
 	<link rel="stylesheet" href="/static/css/home.css">
 	<link rel="stylesheet" href="/static/css/entries.css">
 </head>
 <body class="app-shell">
 	<header class="app-header">
 		<div class="app-nav" aria-hidden="true"></div>
-		<div class="app-actor">
-			Current Actor: {{ current_actor.display_name }}
-		</div>
+		{% include "partials/actor_control.html" %}
 	</header>
 
 	<main class="app-main">
