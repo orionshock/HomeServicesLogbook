@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Home Services Logbook{% endblock %}
+
+{% block content %}
+<h1>Settings</h1>
+<p class="entry-meta">Location metadata</p>
+
+<section class="content-section settings-form-panel">
+    <form method="post" action="/settings" autocomplete="off">
+        <div class="form-field">
+            <label for="location_name">Location Name</label>
+            <input type="text" id="location_name" name="location_name" value="{{ settings.location_name }}">
+        </div>
+
+        <div class="form-field">
+            <label for="location_address">Location Address</label>
+            <input type="text" id="location_address" name="location_address" value="{{ settings.location_address }}">
+        </div>
+
+        <div class="form-field">
+            <label for="location_description">Location Description</label>
+            <textarea id="location_description" name="location_description" rows="4">{{ settings.location_description }}</textarea>
+        </div>
+
+        <div class="entry-actions settings-actions">
+            <a href="/" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+    </form>
+</section>
+{% endblock %}
+

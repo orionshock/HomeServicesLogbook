@@ -4,3 +4,4 @@ from .vendors import *
 from .entries import *
 from .attachments import *
 from .labels import *
+from .settings import *

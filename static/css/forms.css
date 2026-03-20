@@ -62,3 +62,13 @@
     font-size: 0.92rem;
     color: var(--muted);
 }
+
+.settings-form-panel {
+    width: min(60ch, 92vw);
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.settings-actions {
+    justify-content: flex-end;
+}

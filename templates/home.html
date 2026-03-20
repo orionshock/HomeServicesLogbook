@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,6 +13,7 @@
 	<link rel="stylesheet" href="/static/css/home.css">
 	<link rel="stylesheet" href="/static/css/entries.css">
 </head>
+
 <body class="app-shell">
 	<header class="app-header">
 		<div class="app-nav" aria-hidden="true"></div>
@@ -19,11 +21,19 @@
 	</header>
 
 	<main class="app-main">
+		{% if settings.location_name or settings.location_address or settings.location_description %}
 		<section class="content-section home-site-panel" aria-labelledby="home-site-heading">
-			<h1 id="home-site-heading" class="home-site-title">Home Site Placeholder</h1>
-			<p class="home-site-address">123 Example Lane, Hometown, ST 00000</p>
-			<p class="home-site-description">Replace this with your home/location summary once Site Settings is implemented.</p>
+			{% if settings.location_name %}
+			<h1 id="home-site-heading" class="home-site-title">{{ settings.location_name }}</h1>
+			{% endif %}
+			{% if settings.location_address %}
+			<p class="home-site-address">{{ settings.location_address }}</p>
+			{% endif %}
+			{% if settings.location_description %}
+			<p class="home-site-description">{{ settings.location_description }}</p>
+			{% endif %}
 		</section>
+		{% endif %}
 
 		<nav class="home-launcher" aria-label="Main Navigation">
 			<a class="home-tile" href="#" aria-disabled="true" tabindex="-1">
@@ -56,14 +66,15 @@
 				<span class="home-tile-icon" aria-hidden="true">🏷️</span>
 				<span class="home-tile-text">
 					<span class="home-tile-title">Label Management</span>
-					<span class="home-tile-subtitle">Create and manage labels used to organize vendors and entries.</span>
+					<span class="home-tile-subtitle">Create and manage labels used to organize vendors and
+						entries.</span>
 				</span>
 			</a>
-			<a class="home-tile" href="#" aria-disabled="true" tabindex="-1">
+			<a class="home-tile" href="/settings">
 				<span class="home-tile-icon" aria-hidden="true">⚙️</span>
 				<span class="home-tile-text">
-					<span class="home-tile-title">Site Settings</span>
-					<span class="home-tile-subtitle">Configure site metadata and defaults (coming soon).</span>
+					<span class="home-tile-title">Settings</span>
+					<span class="home-tile-subtitle">Configure location metadata, etc.</span>
 				</span>
 			</a>
 		</nav>
@@ -86,4 +97,5 @@
 	<script src="/static/js/dev_seed_routes.js?v=20260316a"></script>
 	{% endif %}
 </body>
+
 </html>

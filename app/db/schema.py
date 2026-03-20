@@ -1,8 +1,10 @@
 from .connection import get_connection
+from app.utils import utc_now_iso
 
 
 def init_db() -> None:
     with get_connection() as conn:
+        now = utc_now_iso()
         # Dev mode: schema changes are applied by recreating data/logbook.db.
         # Do not add migration/backfill logic here.
         conn.executescript("""
@@ -82,6 +84,15 @@ def init_db() -> None:
                 FOREIGN KEY (label_id) REFERENCES labels(id) ON DELETE CASCADE
             );
 
+            CREATE TABLE IF NOT EXISTS settings (
+                id INTEGER PRIMARY KEY,
+                location_name TEXT NOT NULL,
+                location_address TEXT NOT NULL DEFAULT '',
+                location_description TEXT NOT NULL DEFAULT '',
+                updated_at TEXT NOT NULL,
+                updated_by TEXT NOT NULL
+            );
+
             CREATE UNIQUE INDEX IF NOT EXISTS idx_vendors_vendor_uid
                 ON vendors (vendor_uid);
 
@@ -109,3 +120,25 @@ def init_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_entry_labels_label_id
                 ON entry_labels (label_id);
         """)
+
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO settings (
+                id,
+                location_name,
+                location_address,
+                location_description,
+                updated_at,
+                updated_by
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                1,
+                "Welcome Home",
+                "",
+                "See Settings below to change this header.",
+                now,
+                "system",
+            ),
+        )
