@@ -38,46 +38,50 @@ For uploads:
 ```text
 HomeServicesLogbook-Dev/
 |-- app/
-|   |-- main.py
-|   |-- utils.py
+|   |-- main.py (FastAPI app setup, middleware, exception handlers, router registration)
+|   |-- utils.py (shared helpers for timestamps, IDs, and validation)
 |   |-- db/
-|   |   |-- connection.py
-|   |   |-- schema.py
-|   |   |-- vendors.py
-|   |   |-- entries.py
-|   |   |-- attachments.py
-|   |   |-- labels.py
-|   |   `-- __init__.py
+|   |   |-- connection.py (SQLite connection factory with Row mapping)
+|   |   |-- schema.py (schema initialization and singleton settings seed)
+|   |   |-- vendors.py (vendor CRUD, listing, archive/unarchive operations)
+|   |   |-- entries.py (entry CRUD, listing, and timeline helpers)
+|   |   |-- attachments.py (attachment metadata persistence and lookup)
+|   |   |-- labels.py (label CRUD, search, and vendor/entry label linking)
+|   |   |-- settings.py (singleton settings read/update helpers for id = 1)
+|   |   `-- __init__.py (barrel exports for DB helper modules)
 |   `-- routes/
 |       |-- __init__.py (shared actor management, template rendering)
-|       |-- home.py
-|       |-- vendors.py
-|       |-- entries.py
-|       `-- labels.py
+|       |-- home.py (home route and app lifespan initialization)
+|       |-- vendors.py (vendor listing, create/edit, archive/unarchive routes)
+|       |-- entries.py (entry create/edit routes, upload handling, ICS export)
+|       |-- labels.py (label admin page + JSON label management API routes)
+|       `-- settings.py (settings form GET/POST routes)
 |-- templates/
-|   |-- base.html
-|   |-- home.html
-|   |-- vendor_listing.html
-|   |-- vendor_form.html
-|   |-- vendor_detail.html
-|   |-- entry_form.html
-|   |-- label_admin.html
-|   |-- 404.html
-|   |-- error.html
+|   |-- base.html (shared shell layout, top navigation, and script blocks)
+|   |-- home.html (home dashboard, launcher tiles, and dev smoke test controls)
+|   |-- vendor_listing.html (vendor index with A-Z and category views)
+|   |-- vendor_form.html (vendor create/edit form)
+|   |-- vendor_detail.html (vendor profile and timeline landing page)
+|   |-- entry_form.html (entry create/edit workflow page)
+|   |-- label_admin.html (label management page)
+|   |-- settings.html (location metadata settings form)
+|   |-- 404.html (not-found error view)
+|   |-- error.html (generic error view for 4xx/5xx responses)
 |   `-- partials/
-|       |-- vendor_header_card.html
-|       |-- log_entry_card.html
-|       `-- label_picker.html
+|       |-- vendor_header_card.html (shared vendor summary/header card)
+|       |-- log_entry_card.html (shared timeline entry card rendering)
+|       |-- label_picker.html (shared label picker UI fragment)
+|       `-- actor_control.html (shared actor override control used in headers)
 |-- static/
 |   |-- css/
-|   |   |-- base.css
-|   |   |-- layout.css
-|   |   |-- components.css
-|   |   |-- forms.css
-|   |   |-- home.css
-|   |   |-- vendors.css
-|   |   |-- entries.css
-|   |   `-- labels.css
+|   |   |-- base.css (theme tokens and foundational typography/colors)
+|   |   |-- layout.css (app-shell layout primitives)
+|   |   |-- components.css (shared button and reusable component styling)
+|   |   |-- forms.css (input/textarea/form-field styling and settings panel sizing)
+|   |   |-- home.css (home page panel and launcher tile styles)
+|   |   |-- vendors.css (vendor listing/detail specific styles)
+|   |   |-- entries.css (entry workflow and timeline styles)
+|   |   `-- labels.css (label management and label-chip styles)
 |   `-- js/
 |       |-- actor_control.js (actor/user override UI)
 |       |-- entry_form.js (entry form interactions, calendar, layout resizing)
@@ -88,13 +92,17 @@ HomeServicesLogbook-Dev/
 |       |-- time.js (UTC to local time formatting)
 |       |-- external_links.js (marking external links with icon)
 |       |-- unsaved_changes.js (form dirty state detection, navigation warnings)
-|       `-- dev_seed_routes.js (dev-only test data generation)
+|       `-- smokeTester.js (dev-only smoke test and sample data route exerciser)
 |-- data/
-|   `-- logbook.db
-|-- uploads/
+|   `-- logbook.db (SQLite database file for app data)
+|-- uploads/ (stored uploaded files organized by date folders)
 |-- docs/
-|-- requirements.txt
-`-- README.md
+|   |-- Project Architecture.md (system layout, routes, and composition reference)
+|   |-- Database Schema.md (SQLite table/index and lifecycle reference)
+|   |-- Style Guide.md (coding/style conventions for contributors and Copilot)
+|   `-- todo.md (project backlog and open product questions)
+|-- requirements.txt (Python dependency list)
+`-- README.md (project overview and quick-start guidance)
 ```
 
 ---
@@ -116,6 +124,7 @@ Responsibilities:
   - vendors
   - entries
   - labels
+  - settings
 
 ## app/routes/__init__.py
 
@@ -152,6 +161,7 @@ Actor resolution behavior is controlled by these environment variables:
 - entries.py: entry CRUD/listing.
 - attachments.py: attachment metadata CRUD/listing.
 - labels.py: label CRUD/search and vendor/entry label assignment helpers.
+- settings.py: singleton settings read/update helpers.
 
 ---
 
@@ -160,6 +170,11 @@ Actor resolution behavior is controlled by these environment variables:
 ## Home
 
 - GET / -> Home page
+
+## Settings
+
+- GET /settings -> Settings form page
+- POST /settings -> Save location metadata, then redirect to /
 
 ## Actor
 
@@ -206,17 +221,20 @@ Core persistence model:
 - labels
 - vendor_labels
 - entry_labels
+- settings
 
 Behavior model:
 - Entries are the chronological source record.
 - Labels are optional metadata for organization/filtering.
 - Attachments are file-backed and linked to entries.
+- Settings is a singleton row (id = 1) used for home page location metadata.
 
 ---
 
 ## Operational Notes
 
 - First app startup initializes schema through lifespan -> init_db().
+- Settings singleton row (id = 1) is inserted during init when missing.
 - Development schema changes are applied by recreating data/logbook.db.
 - Upload size cap is 10 MB per file.
 - Attachment path checks prevent file access outside uploads/.

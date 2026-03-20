@@ -346,7 +346,6 @@ It is not:
 
 ### Delay advanced features
 Do not prematurely build:
-- labels
 - advanced search systems
 - external database support
 - authentication systems

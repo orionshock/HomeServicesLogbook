@@ -30,6 +30,7 @@ Labels are optional organizational metadata that can be attached to both vendors
 ## Schema Lifecycle
 
 - Schema is initialized at startup by app/db/schema.py:init_db.
+- During initialization, the singleton settings row is inserted with id = 1 when missing.
 - Development workflow applies schema changes by recreating data/logbook.db.
 - Migration/backfill logic is intentionally not included in init_db.
 
@@ -172,6 +173,30 @@ CREATE TABLE IF NOT EXISTS entry_labels (
 );
 ```
 
+## settings
+
+Purpose:
+- Singleton location metadata used on the home page and edited from /settings.
+
+```sql
+CREATE TABLE IF NOT EXISTS settings (
+    id INTEGER PRIMARY KEY,
+    location_name TEXT NOT NULL,
+    location_address TEXT NOT NULL DEFAULT '',
+    location_description TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL,
+    updated_by TEXT NOT NULL
+);
+```
+
+Seed behavior:
+- Row id = 1 is inserted with defaults when missing.
+- Default location_name = Welcome Home.
+- Default location_address = empty string.
+- Default location_description = See Settings below to change this header.
+- updated_at uses app UTC timestamp helper.
+- updated_by defaults to system.
+
 ---
 
 ## Indexes
@@ -213,5 +238,6 @@ CREATE INDEX IF NOT EXISTS idx_entry_labels_label_id
 - entries 1 -> many attachments
 - vendors many <-> many labels (through vendor_labels)
 - entries many <-> many labels (through entry_labels)
+- settings is a singleton table keyed by id = 1
 
 Labels are organizational metadata and do not replace timeline data in entries.

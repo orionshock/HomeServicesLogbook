@@ -188,8 +188,8 @@
 
   const labelCacheByNameKey = new Map();
 
-  function log(...args) {
-    console.log(DEFAULTS.logPrefix, ...args);
+  function logProgress(reportProgress, message) {
+    reportProgress(message);
   }
 
   function sleep(ms) {
@@ -457,6 +457,40 @@
     return response;
   }
 
+  async function getPage(url) {
+    const response = await fetch(url, {
+      method: "GET",
+      redirect: "follow",
+      credentials: "same-origin",
+    });
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      throw new Error(`GET ${url} failed (${response.status}) ${text.slice(0, 300)}`);
+    }
+
+    return response;
+  }
+
+  async function postJson(url, payload) {
+    const response = await fetch(url, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const message = body && body.error ? body.error : `Status ${response.status}`;
+      throw new Error(`POST ${url} failed: ${message}`);
+    }
+
+    return body;
+  }
+
   function extractVendorUid(finalUrl) {
     const match = finalUrl.match(/\/vendor\/([^/?#]+)/i);
     if (!match) throw new Error(`Could not extract vendor UID from URL: ${finalUrl}`);
@@ -511,12 +545,97 @@
     await postForm(`/vendor/${encodeURIComponent(vendor.vendorUid)}/archive`, new URLSearchParams());
   }
 
+  function buildSettingsPayload() {
+    const cityStateZip = randomStreetAddress().split(", ").slice(1).join(", ");
+    const locationName = `Smoke Test Home ${randomDigits(4)}`;
+    const locationAddress = `${randInt(100, 9999)} ${pick(["Elm", "Juniper", "Canyon", "Maple", "Ridge"])} ${pick(["St", "Ave", "Ln", "Rd", "Dr"])}${cityStateZip ? `, ${cityStateZip}` : ""}`;
+    const locationDescription = [
+      `Smoke test update for ${locationName}.`,
+      `Used to verify the server-rendered settings form and home page header.`,
+      `Reference ${randomTicket()}.`,
+    ].join(" ");
+
+    return {
+      location_name: locationName,
+      location_address: locationAddress,
+      location_description: locationDescription,
+    };
+  }
+
+  async function exerciseSettingsRoutes(reportProgress) {
+    logProgress(reportProgress, "Settings check: loading /settings form...");
+    await getPage("/settings");
+
+    const payload = buildSettingsPayload();
+    logProgress(reportProgress, `Settings check: saving location \"${payload.location_name}\"...`);
+    await postForm("/settings", new URLSearchParams(payload));
+    logProgress(reportProgress, "Settings check: loading / to confirm updated home render...");
+    await getPage("/");
+
+    logProgress(reportProgress, `Settings check complete: ${payload.location_name}`);
+
+    return payload;
+  }
+
+  async function exerciseLabelManagementRoutes(reportProgress) {
+    logProgress(reportProgress, "Label route check: loading /labels...");
+    await getPage("/labels");
+
+    const baseName = `Smoke Label ${randomDigits(6)}`;
+    const renamedName = `${baseName} Renamed`;
+    logProgress(reportProgress, `Label route check: creating \"${baseName}\"...`);
+    const created = await createLabel(baseName, "#1d4ed8");
+
+    logProgress(reportProgress, `Label route check: renaming to \"${renamedName}\"...`);
+    const renamePayload = await postJson(`/labels/${encodeURIComponent(created.label_uid)}/rename`, {
+      name: renamedName,
+    });
+    if (!renamePayload.ok || toNameKey(renamePayload.name) !== toNameKey(renamedName)) {
+      throw new Error(`Label rename verification failed for ${created.label_uid}`);
+    }
+
+    logProgress(reportProgress, `Label route check: updating color for ${created.label_uid}...`);
+    const colorPayload = await postJson(`/labels/${encodeURIComponent(created.label_uid)}/color`, {
+      color: "#0f766e",
+    });
+    if (!colorPayload.ok || String(colorPayload.color || "").toLowerCase() !== "#0f766e") {
+      throw new Error(`Label color verification failed for ${created.label_uid}`);
+    }
+
+    logProgress(reportProgress, `Label route check: verifying suggest results for \"${renamedName}\"...`);
+    const suggested = await findLabelByExactName(renamedName);
+    if (!suggested || suggested.label_uid !== created.label_uid) {
+      throw new Error(`Label suggest verification failed for ${renamedName}`);
+    }
+
+    logProgress(reportProgress, `Label route check: deleting ${created.label_uid}...`);
+    const deletePayload = await postJson(`/labels/${encodeURIComponent(created.label_uid)}/delete`, {});
+    if (!deletePayload.ok) {
+      throw new Error(`Label delete verification failed for ${created.label_uid}`);
+    }
+
+    logProgress(reportProgress, `Label route check: verifying deletion for \"${renamedName}\"...`);
+    const afterDelete = await findLabelByExactName(renamedName);
+    if (afterDelete && afterDelete.label_uid === created.label_uid) {
+      throw new Error(`Deleted label still appears in suggest results for ${renamedName}`);
+    }
+
+    logProgress(reportProgress, `Label route check complete: ${baseName} -> ${renamedName}`);
+
+    return {
+      createdLabelUid: created.label_uid,
+      createdName: baseName,
+      renamedName,
+    };
+  }
+
   async function run(options = {}) {
     const cfg = { ...DEFAULTS, ...options };
     const reportProgress = typeof cfg.onProgress === "function" ? cfg.onProgress : () => {};
     const pauseMsBetweenVendors = Math.max(MIN_ACTION_PAUSE_MS, Number(cfg.pauseMsBetweenVendors) || 0);
     const pauseMsBetweenEntries = Math.max(MIN_ACTION_PAUSE_MS, Number(cfg.pauseMsBetweenEntries) || 0);
     const vendorPool = buildVendorPool();
+    const totalEntriesTarget = cfg.vendors * cfg.entriesPerVendor;
 
     if (cfg.vendors > vendorPool.length) {
       throw new Error(`Requested ${cfg.vendors} vendors, but only ${vendorPool.length} vendor definitions are available.`);
@@ -527,12 +646,14 @@
     }
 
     if (cfg.dryRun) {
-      log("Dry run only.", cfg);
       return cfg;
     }
 
-    log(`Creating ${cfg.vendors} vendors and ${cfg.entriesPerVendor} entries per vendor...`);
-    reportProgress(`Starting seed: 0/${cfg.vendors} vendors, 0/${cfg.vendors * cfg.entriesPerVendor} entries...`);
+    logProgress(reportProgress, `Starting seed: 0/${cfg.vendors} vendors, 0/${totalEntriesTarget} entries...`);
+
+    const settingsResult = await exerciseSettingsRoutes(reportProgress);
+
+    const labelRouteResult = await exerciseLabelManagementRoutes(reportProgress);
 
     const createdVendors = [];
     const seenLabelUids = new Set();
@@ -540,47 +661,66 @@
 
     for (let i = 0; i < cfg.vendors; i += 1) {
       const vendorDef = vendorPool[i];
-      log(`Creating vendor ${i + 1}/${cfg.vendors}: ${vendorDef.vendor_name}`);
-      reportProgress(`Creating vendor ${i + 1}/${cfg.vendors}: ${vendorDef.vendor_name}`);
+      logProgress(reportProgress, `Creating vendor ${i + 1}/${cfg.vendors}: ${vendorDef.vendor_name} (${vendorDef.vendor_label})`);
       const vendor = await createVendor(vendorDef, i);
       createdVendors.push(vendor);
       (vendor.seedLabelUids || []).forEach(labelUid => seenLabelUids.add(labelUid));
-      reportProgress(`Created vendor ${i + 1}/${cfg.vendors}. Entries progress: ${entriesCreated}/${cfg.vendors * cfg.entriesPerVendor}`);
+      logProgress(
+        reportProgress,
+        `Created vendor ${i + 1}/${cfg.vendors}: ${vendor.vendor_name} (${vendor.vendorUid}) with ${(vendor.seedLabelUids || []).length} seed labels.`,
+      );
       await sleep(pauseMsBetweenVendors);
 
       for (let j = 0; j < cfg.entriesPerVendor; j += 1) {
-        if ((j + 1) % 5 === 0 || j === 0) {
-          log(`  entries ${j + 1}/${cfg.entriesPerVendor} for ${vendor.vendor_name}`);
-        }
-        reportProgress(`Creating entry ${j + 1}/${cfg.entriesPerVendor} for ${vendor.vendor_name} (${entriesCreated + 1}/${cfg.vendors * cfg.entriesPerVendor} total)`);
+        logProgress(
+          reportProgress,
+          `Creating entry ${j + 1}/${cfg.entriesPerVendor} for ${vendor.vendor_name} (${entriesCreated + 1}/${totalEntriesTarget} total)...`,
+        );
         const entryLabelUids = await createEntry(vendor, j);
         entriesCreated += 1;
         entryLabelUids.forEach(labelUid => seenLabelUids.add(labelUid));
+        logProgress(
+          reportProgress,
+          `Created entry ${j + 1}/${cfg.entriesPerVendor} for ${vendor.vendor_name}; attached ${entryLabelUids.length} labels. Total entries: ${entriesCreated}/${totalEntriesTarget}.`,
+        );
         await sleep(pauseMsBetweenEntries);
       }
+
+      logProgress(
+        reportProgress,
+        `Vendor complete: ${vendor.vendor_name}. Progress: ${createdVendors.length}/${cfg.vendors} vendors, ${entriesCreated}/${totalEntriesTarget} entries, ${seenLabelUids.size} labels seen.`,
+      );
     }
 
     const toArchive = createdVendors.slice(-cfg.archiveCount);
     for (let i = 0; i < toArchive.length; i += 1) {
       const vendor = toArchive[i];
-      log(`Archiving vendor: ${vendor.vendor_name}`);
-      reportProgress(`Archiving vendor ${i + 1}/${toArchive.length}: ${vendor.vendor_name}`);
+      logProgress(reportProgress, `Archiving vendor ${i + 1}/${toArchive.length}: ${vendor.vendor_name} (${vendor.vendorUid})`);
       await archiveVendor(vendor);
+      logProgress(reportProgress, `Archived vendor ${i + 1}/${toArchive.length}: ${vendor.vendor_name}`);
       if (i < toArchive.length - 1) {
         await sleep(pauseMsBetweenVendors);
       }
     }
 
-    log("Done.", {
+    const summary = {
+      settingsUpdated: settingsResult,
+      labelRouteTest: labelRouteResult,
       vendorsCreated: createdVendors.length,
       entriesCreated,
       labelsGenerated: seenLabelUids.size,
       archivedVendors: toArchive.length,
-    });
+      archivedVendorUids: toArchive.map(v => v.vendorUid),
+      createdVendorNames: createdVendors.map(v => v.vendor_name),
+    };
 
-    reportProgress(`Seed complete: vendors ${createdVendors.length}, entries ${entriesCreated}, labels ${seenLabelUids.size}`);
+    reportProgress(
+      `Seed complete. Settings: ${settingsResult.location_name}. Label routes: ${labelRouteResult.renamedName}. Vendors: ${createdVendors.length}. Entries: ${entriesCreated}. Labels: ${seenLabelUids.size}. Archived: ${toArchive.length}.`,
+    );
 
     return {
+      settingsUpdated: settingsResult,
+      labelRouteTest: labelRouteResult,
       vendorsCreated: createdVendors,
       entriesCreated,
       labelsGenerated: seenLabelUids.size,
@@ -610,8 +750,7 @@
         const result = await run({ onProgress: setStatus });
         setStatus(`Seed complete. Vendors: ${result.vendorsCreated.length}, Entries: ${result.entriesCreated}, Labels: ${result.labelsGenerated}`);
       } catch (error) {
-        console.error("[HSL Dev Seed] Run failed", error);
-        setStatus("Seed run failed. Check browser console for details.");
+        setStatus(`Seed run failed: ${error instanceof Error ? error.message : "Unexpected error."}`);
       } finally {
         runButton.disabled = false;
       }
@@ -619,6 +758,4 @@
   }
 
   bindRunButton();
-
-  console.log("[HSL Dev Seed] Ready. Run `await window.HSLDevSeed.run()` in the console.");
 })();
