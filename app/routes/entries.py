@@ -19,6 +19,8 @@ from app.db import (
     list_labels,
     list_labels_for_entry_id,
     list_labels_for_vendor_id,
+    list_labels_for_vendor_ids,
+    list_vendors,
     replace_entry_labels,
     resolve_submitted_labels,
     update_entry_by_uid,
@@ -32,6 +34,41 @@ from app.utils import (
 )
 
 router = APIRouter()
+
+
+def _vendor_name_sort_key(vendor: dict) -> str:
+    return str(vendor["vendor_name"]).casefold()
+
+
+def _build_entry_picker_vendor_rows(vendors: list) -> list[dict]:
+    labels_by_vendor_id: dict[int, list[dict]] = {}
+    vendor_ids = [int(vendor["id"]) for vendor in vendors]
+
+    for row in list_labels_for_vendor_ids(vendor_ids):
+        labels_by_vendor_id.setdefault(int(row["vendor_id"]), []).append(
+            {
+                "label_uid": row["label_uid"],
+                "name": row["name"],
+                "color": row["color"],
+            }
+        )
+
+    listing_rows: list[dict] = []
+    for vendor in vendors:
+        vendor_id = int(vendor["id"])
+        labels = labels_by_vendor_id.get(vendor_id, [])
+        label_names = [label["name"] for label in labels]
+        search_text = " ".join([vendor["vendor_name"], *label_names]).strip()
+        listing_rows.append(
+            {
+                "vendor_uid": vendor["vendor_uid"],
+                "vendor_name": vendor["vendor_name"],
+                "labels": labels,
+                "search_text": search_text,
+            }
+        )
+
+    return sorted(listing_rows, key=_vendor_name_sort_key)
 
 
 def normalize_entry_interaction_at_utc(entry_interaction_at_utc: str) -> str | None:
@@ -325,6 +362,24 @@ def _render_entry_form(
     )
     response.status_code = status_code
     return response
+
+
+@router.get("/entries/new")
+def entry_vendor_picker(request: Request):
+    vendors = list_vendors(include_archived=False)
+    vendor_rows = _build_entry_picker_vendor_rows(vendors)
+
+    return render_template(
+        request,
+        "entry_vendor_picker.html",
+        {
+            "breadcrumbs": [
+                {"label": "Home", "url": "/"},
+                {"label": "New Entry", "url": None},
+            ],
+            "vendors": vendor_rows,
+        },
+    )
 
 
 @router.get("/vendor/{vendor_uid}/entries/new")

@@ -194,6 +194,109 @@
     color: var(--muted);
 }
 
+.entry-vendor-picker-page {
+    max-width: 860px;
+}
+
+.entry-vendor-picker-header {
+    margin-bottom: 12px;
+}
+
+.entry-vendor-picker-header h1 {
+    margin-bottom: 6px;
+}
+
+.entry-vendor-picker-subtitle {
+    margin: 0;
+    color: var(--muted);
+}
+
+.entry-vendor-picker-toolbar {
+    margin-bottom: 10px;
+}
+
+.entry-vendor-picker-search-label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+#entryVendorSearch {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px;
+    background: #fff;
+    font: inherit;
+    color: inherit;
+}
+
+.entry-vendor-picker-add-link {
+    margin: 6px 0 0;
+    font-size: 0.92rem;
+}
+
+.entry-vendor-picker-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+}
+
+.entry-vendor-picker-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 9px 10px;
+    color: inherit;
+    text-decoration: none;
+}
+
+.entry-vendor-picker-list li + li {
+    border-top: 1px solid var(--line);
+}
+
+.entry-vendor-picker-row:hover {
+    background: #faf6ef;
+}
+
+.entry-vendor-picker-name {
+    font-weight: 600;
+}
+
+.entry-vendor-picker-labels {
+    margin: 0;
+    justify-content: flex-end;
+}
+
+.entry-vendor-picker-label-chip {
+    font-size: 0.78rem;
+    color: var(--muted);
+}
+
+.entry-vendor-picker-empty {
+    margin-top: 12px;
+    border: 1px dashed var(--line);
+    border-radius: 8px;
+    padding: 12px;
+    background: #fff;
+}
+
+.entry-vendor-picker-empty p {
+    margin: 0;
+}
+
+.entry-vendor-picker-empty p + p {
+    margin-top: 6px;
+}
+
+.entry-vendor-picker-empty.is-hidden {
+    display: none;
+}
+
 @media (max-width: 900px) {
     .entry-form-layout {
         grid-template-columns: 1fr;
@@ -210,5 +313,14 @@
 
     .calendar-grid {
         grid-template-columns: 1fr;
+    }
+
+    .entry-vendor-picker-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .entry-vendor-picker-labels {
+        justify-content: flex-start;
     }
 }

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}New Entry - Home Services Logbook{% endblock %}
+
+{% block content %}
+<section class="entry-vendor-picker-page" aria-labelledby="entry-vendor-picker-title">
+    <header class="entry-vendor-picker-header">
+        <h1 id="entry-vendor-picker-title">New Entry</h1>
+        <p class="entry-vendor-picker-subtitle">Choose a vendor to log a service interaction</p>
+    </header>
+
+    <div class="entry-vendor-picker-toolbar">
+        <label for="entryVendorSearch" class="entry-vendor-picker-search-label">Find vendor</label>
+        <input
+            id="entryVendorSearch"
+            type="text"
+            placeholder="Search by vendor name or label --- Press Enter to open the first match."
+            autocomplete="off"
+            autofocus
+        >
+        <p class="entry-vendor-picker-add-link">
+            <a href="/vendors/new">Can't find it? Add a vendor.</a>
+        </p>
+    </div>
+
+    <ul class="entry-vendor-picker-list" data-entry-picker-list>
+        {% for vendor in vendors %}
+        <li data-entry-picker-row data-search="{{ vendor.search_text }}">
+            <a class="entry-vendor-picker-row" href="/vendor/{{ vendor.vendor_uid }}/entries/new">
+                <span class="entry-vendor-picker-name">{{ vendor.vendor_name }}</span>
+                {% if vendor.labels %}
+                <span class="label-chip-list entry-vendor-picker-labels" aria-label="Vendor labels">
+                    {% for label in vendor.labels %}
+                    <span class="label-chip entry-vendor-picker-label-chip">
+                        <span class="label-chip-dot"></span>
+                        <span class="label-chip-text">{{ label.name }}</span>
+                    </span>
+                    {% endfor %}
+                </span>
+                {% endif %}
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
+
+    <div class="entry-vendor-picker-empty{% if vendors %} is-hidden{% endif %}" data-entry-picker-empty>
+        <p>No vendors found.</p>
+        <p><a href="/vendors/new">Add a new vendor</a></p>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/entry_vendor_picker.js"></script>
+{% endblock %}
