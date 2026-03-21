@@ -31,5 +31,40 @@
         });
     }
 
-    document.addEventListener("DOMContentLoaded", initPhoneLinks);
+    function initCollapseToggle() {
+        var toggles = document.querySelectorAll(".vendor-collapse-toggle");
+
+        toggles.forEach(function (toggle) {
+            toggle.addEventListener("click", function (e) {
+                e.preventDefault();
+
+                var controlsId = toggle.getAttribute("aria-controls");
+                if (!controlsId) {
+                    return;
+                }
+
+                var body = document.getElementById(controlsId);
+                if (!body) {
+                    return;
+                }
+
+                var isCurrentlyExpanded = toggle.getAttribute("aria-expanded") === "true";
+                var isCollapsed = body.classList.contains("is-collapsed");
+
+                // Toggle the state
+                if (isCurrentlyExpanded) {
+                    toggle.setAttribute("aria-expanded", "false");
+                    body.classList.add("is-collapsed");
+                } else {
+                    toggle.setAttribute("aria-expanded", "true");
+                    body.classList.remove("is-collapsed");
+                }
+            });
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        initPhoneLinks();
+        initCollapseToggle();
+    });
 }());
