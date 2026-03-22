@@ -426,7 +426,7 @@
     const includeTicket = Math.random() < 0.55;
     const title = includeTicket
       ? `${titleBase} - ${randomTicket()}`
-      : `${titleBase} - ${vendorName}`;
+      : titleBase;
 
     const rep = `${pick(FIRST_NAMES)} ${String.fromCharCode(randInt(65, 90))}.`;
     const body = [

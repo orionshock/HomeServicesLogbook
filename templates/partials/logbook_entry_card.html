@@ -2,13 +2,6 @@
 
 <article class="timeline-entry timeline-entry-logbook">
     <div class="entry-header logbook-entry-header">
-        <div class="logbook-entry-vendor-row">
-            <a class="logbook-entry-vendor-link" href="{{ url_for('vendor_detail', vendor_uid=log_entry.vendor_uid) }}">{{ log_entry.vendor_name }}</a>
-            {% if log_entry.vendor_archived_at %}
-            <span class="logbook-entry-archived-indicator">📦 Archived</span>
-            {% endif %}
-        </div>
-
         <div class="logbook-entry-title-row">
             <div class="logbook-entry-title-main">
                 <h3 class="entry-title">{{ log_entry.entry_title or "Untitled Entry" }}</h3>
@@ -26,6 +19,13 @@
     </div>
 
     <div class="entry-metadata">
+        <p class="entry-subtitle logbook-entry-vendor-meta">
+            Vendor:
+            <a class="logbook-entry-vendor-link" href="{{ url_for('vendor_detail', vendor_uid=log_entry.vendor_uid) }}">{{ log_entry.vendor_name }}</a>
+            {% if log_entry.vendor_archived_at %}
+            <span class="logbook-entry-archived-indicator">📦 Archived</span>
+            {% endif %}
+        </p>
         {% if log_entry.entry_interaction_at %}
         <p class="entry-subtitle">Interaction: <time class="js-local-time" datetime="{{ log_entry.entry_interaction_at }}">{{ log_entry.entry_interaction_at }}</time></p>
         {% else %}
@@ -41,7 +41,11 @@
         <div class="label-chip-list">
             {% for label in log_entry_labels %}
             <span class="label-chip">
-                <span class="label-chip-dot"{% if label.color %} style="background-color: {{ label.color }};"{% endif %}></span>
+                {% if label.color %}
+                <span class="label-chip-dot" style="background-color: {{ label.color }};"></span>
+                {% else %}
+                <span class="label-chip-dot"></span>
+                {% endif %}
                 <span class="label-chip-text">{{ label.name }}</span>
             </span>
             {% endfor %}
