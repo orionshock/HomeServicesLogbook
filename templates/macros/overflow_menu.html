@@ -1,0 +1,10 @@
+{% macro overflow_menu(wrapper_class, aria_label) %}
+<div class="{{ wrapper_class }}">
+    <details class="overflow-menu">
+        <summary class="overflow-trigger" aria-label="{{ aria_label }}">⋮</summary>
+        <div class="overflow-menu-panel">
+            {{ caller() }}
+        </div>
+    </details>
+</div>
+{% endmacro %}

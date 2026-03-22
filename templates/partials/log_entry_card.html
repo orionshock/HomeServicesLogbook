@@ -1,3 +1,5 @@
+{% from "macros/overflow_menu.html" import overflow_menu %}
+
 <article class="timeline-entry timeline-entry-{{ log_mode }}{% if is_current_entry is defined and is_current_entry %} is-current-entry{% endif %}">
     <!-- Header row: title and attachment (left), actions (right) -->
     <div class="entry-header">
@@ -9,14 +11,9 @@
         </div>
         <div class="entry-header-right">
             {% if not (is_current_entry is defined and is_current_entry) %}
-            <div class="entry-overflow-actions">
-                <details class="overflow-menu">
-                    <summary class="overflow-trigger" aria-label="Entry actions">…</summary>
-                    <div class="overflow-menu-panel">
-                        <a href="/entry/{{ log_entry.entry_uid }}/edit" class="btn btn-secondary">Edit Entry</a>
-                    </div>
-                </details>
-            </div>
+            {% call overflow_menu("entry-overflow-actions", "Entry actions") %}
+            <a href="/entry/{{ log_entry.entry_uid }}/edit" class="overflow-menu-item">Edit Entry</a>
+            {% endcall %}
             {% else %}
             <span class="current-entry-badge">Editing</span>
             {% endif %}

@@ -1,3 +1,5 @@
+{% from "macros/overflow_menu.html" import overflow_menu %}
+
 <section class="content-section vendor-header-details-card">
     <div class="vendor-header-main">
         <div class="vendor-header-top">
@@ -69,23 +71,18 @@
     </div>
 
     {% if show_actions %}
-    <div class="vendor-overflow-actions">
-        <details class="overflow-menu">
-            <summary class="overflow-trigger" aria-label="Vendor actions">...</summary>
-            <div class="overflow-menu-panel">
-                <a href="/vendor/{{ vendor.vendor_uid }}/edit" class="btn btn-secondary">Edit Vendor</a>
-                {% if not vendor.vendor_archived_at %}
-                <form method="post" action="/vendor/{{ vendor.vendor_uid }}/archive" class="overflow-form">
-                    <button type="submit" class="btn btn-danger">Archive Vendor</button>
-                </form>
-                {% else %}
-                <form method="post" action="/vendor/{{ vendor.vendor_uid }}/unarchive" class="overflow-form">
-                    <button type="submit" class="btn btn-secondary">Unarchive Vendor</button>
-                </form>
-                {% endif %}
-            </div>
-        </details>
-    </div>
+    {% call overflow_menu("vendor-overflow-actions", "Vendor actions") %}
+    <a href="/vendor/{{ vendor.vendor_uid }}/edit" class="overflow-menu-item">Edit Vendor</a>
+    {% if not vendor.vendor_archived_at %}
+    <form method="post" action="/vendor/{{ vendor.vendor_uid }}/archive" class="overflow-form">
+        <button type="submit" class="overflow-menu-item overflow-menu-item-danger">Archive Vendor</button>
+    </form>
+    {% else %}
+    <form method="post" action="/vendor/{{ vendor.vendor_uid }}/unarchive" class="overflow-form">
+        <button type="submit" class="overflow-menu-item">Unarchive Vendor</button>
+    </form>
+    {% endif %}
+    {% endcall %}
     {% endif %}
 </section>
 <script src="/static/js/vendor_header_card.js"></script>

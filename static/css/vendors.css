@@ -157,10 +157,34 @@
     margin: 0;
 }
 
-.overflow-form .btn,
-.overflow-menu-panel .btn {
+.overflow-menu-item {
+    display: block;
     width: 100%;
-    text-align: center;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-weight: 500;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.overflow-menu-item:hover,
+.overflow-menu-item:focus-visible {
+    background: var(--surface-strong);
+    outline: none;
+}
+
+.overflow-menu-item-danger {
+    color: var(--danger);
+}
+
+.overflow-menu-item-danger:hover,
+.overflow-menu-item-danger:focus-visible {
+    background: #fef2f2;
 }
 
 .vendor-header-actions-row {
