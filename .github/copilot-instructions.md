@@ -55,6 +55,14 @@ Conceptual model:
 - Vendor -> many Entries
 - Entry -> many Attachments
 
+Routing/module placement:
+- Keep HTTP route handlers in `app/routes/*.py`.
+- Keep `app/main.py` focused on app setup, middleware, exception handlers, and router registration.
+
+Abstraction rule:
+- Prefer explicit, purpose-built code over generic abstraction layers.
+- Do not introduce generic repositories/services/helpers unless repetition is obvious and the abstraction clearly reduces duplication.
+
 ## Database guidance
 Prefer SQLite-friendly, maintainable schema design.
 
@@ -71,6 +79,10 @@ Important:
 
 Use parameterized SQL only.
 Never build SQL queries with string interpolation.
+
+Database helper conventions:
+- Prefer explicit DB helper functions in `app/db/*.py` (for example `get_vendor_by_uid`, `list_entries_for_vendor`, `replace_entry_labels`).
+- Do not introduce an ORM or generic data-access abstraction unless explicitly requested.
 
 ## Security rules
 Treat all external input as untrusted:
@@ -113,6 +125,10 @@ Behavior rules:
 - This is intentional and should encourage chronological logging.
 - Editing previous notes should be possible, but not the primary path.
 - Prefer “append new entry” behavior over “rewrite history” behavior.
+
+Action density rule:
+- Keep primary actions visible.
+- When cards/rows have many secondary actions, place secondary actions in overflow menus to preserve scanability.
 
 ## Calendar rules
 Calendar support is intentionally lightweight.
@@ -172,6 +188,12 @@ Implementation guidance:
 - allow users to add/remove labels without rewriting history
 - prefer simple, explicit label behavior over automated or inferred labeling
 - treat labels as display/query helpers, while `entries` remain the center of gravity
+- treat labels as flexible tags, not strict required categories
+
+## URL and path generation rules
+- Generate app URLs using route-name helpers (`path_for` in Python routes, `url_for` in templates).
+- Do not hardcode internal app paths in templates or route responses.
+- This is required so links continue to work when `APP_ROOT_PATH` or route definitions change.
 
 ## Coding style
 - Write clear, direct, readable Python.

@@ -38,7 +38,9 @@ For uploads:
 ```text
 HomeServicesLogbook-Dev/
 |-- app/
+|   |-- actor.py (actor resolution logic + actor override routes)
 |   |-- main.py (FastAPI app setup, middleware, exception handlers, router registration)
+|   |-- runtime.py (environment-driven runtime config values)
 |   |-- utils.py (shared helpers for timestamps, IDs, and validation)
 |   |-- db/
 |   |   |-- connection.py (SQLite connection factory with Row mapping)
@@ -50,7 +52,7 @@ HomeServicesLogbook-Dev/
 |   |   |-- settings.py (singleton settings read/update helpers for id = 1)
 |   |   `-- __init__.py (barrel exports for DB helper modules)
 |   `-- routes/
-|       |-- __init__.py (shared actor management, template rendering)
+|       |-- __init__.py (shared path/url helpers + template rendering)
 |       |-- home.py (home route and app lifespan initialization)
 |       |-- vendors.py (vendor listing, create/edit, archive/unarchive routes)
 |       |-- entries.py (entry create/edit routes, upload handling, ICS export)
@@ -113,6 +115,7 @@ HomeServicesLogbook-Dev/
 
 Responsibilities:
 - Creates FastAPI app with lifespan from app/routes/home.py.
+- Applies root_path from APP_ROOT_PATH.
 - Mounts static files at /static.
 - Registers exception handlers:
   - HTTPException -> 404.html or error.html
@@ -121,6 +124,7 @@ Responsibilities:
 - Adds middleware to attach request.state.current_actor.
 - Includes routers:
   - home
+  - actor
   - vendors
   - entries
   - labels
@@ -131,7 +135,12 @@ Responsibilities:
 Shared route utilities:
 - BASE_DIR path resolution.
 - MAX_UPLOAD_BYTES (10 MB).
+- path_for helper that respects app root_path.
 - Template rendering helper with current actor context.
+
+## app/actor.py
+
+Actor and override handling:
 - Current actor resolver with explicit precedence:
   - actor_override cookie
   - trusted upstream header (config-gated)
@@ -139,6 +148,13 @@ Shared route utilities:
 - Actor helper routes:
   - POST /actor/set
   - POST /actor/reset
+
+## app/runtime.py
+
+Environment normalization helpers and runtime constants:
+- TRUST_UPSTREAM_AUTH
+- UPSTREAM_ACTOR_HEADER
+- APP_ROOT_PATH
 
 ## Environment Configuration
 
@@ -152,6 +168,11 @@ Actor resolution behavior is controlled by these environment variables:
 - UPSTREAM_ACTOR_HEADER
   - Default: X-Remote-User
   - Header name used for upstream actor identity when TRUST_UPSTREAM_AUTH is enabled.
+
+- APP_ROOT_PATH
+  - Default: empty (mounted at site root)
+  - Normalized to a leading slash with no trailing slash.
+  - Used as FastAPI root_path and by path_for when generating links.
 
 ## app/db/
 

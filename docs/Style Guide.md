@@ -154,6 +154,13 @@ Use:
 
 Do not invent custom infrastructure unless there is a real need.
 
+### Keep route modules in app/routes
+HTTP route handlers belong in app/routes/*.py.
+
+Use app/main.py only for app wiring (middleware, exception handlers, and router registration).
+
+Avoid moving route behavior into generic framework layers unless there is repeated behavior that is clearly shared.
+
 ---
 
 ## Template Style (Jinja)
@@ -218,6 +225,16 @@ Default approach is direct SQLite access with simple helper functions.
 
 Do not introduce SQLAlchemy or other ORMs unless explicitly requested.
 
+### Prefer explicit DB helper functions
+Use direct, purpose-specific helpers in app/db/*.py.
+
+Good:
+- get_vendor_by_uid
+- list_entries_for_vendor
+- replace_entry_labels
+
+Avoid generic repository or service abstractions unless repetition is obvious and the abstraction removes real duplication.
+
 ### Centralize DB access
 Keep database access in dedicated helper/service modules rather than scattering SQL everywhere.
 
@@ -252,6 +269,13 @@ Store relative paths in SQLite, not environment-specific absolute paths.
 
 ## HTML / UI Style
 
+### Server-rendered first
+Prefer server-rendered HTML as the default.
+
+Add JavaScript only when it improves UX in a focused way (for example autocomplete, lightweight form helpers, and progressive enhancement).
+
+Do not build JS-heavy client architecture for standard page flows.
+
 ### Keep the UI utilitarian and clear
 This app is a practical logbook tool.
 
@@ -275,6 +299,11 @@ UI decisions should support that flow.
 
 ### Encourage append-style logging
 The UI should naturally favor creating new entries over rewriting history.
+
+### Use overflow menus for dense action areas
+When cards or rows have multiple secondary actions, place those actions in an overflow menu to preserve scanability.
+
+Keep primary actions visible and move lower-frequency actions into the overflow trigger.
 
 ---
 
@@ -330,6 +359,16 @@ Use:
 
 ### Avoid unnecessary frontend complexity
 Do not introduce React, Vue, or other frontend frameworks unless explicitly requested.
+
+### Keep labels flexible
+Treat labels as lightweight tags for filtering and organization.
+
+Do not treat labels as strict categories or required taxonomy.
+
+### Generate URLs from route names
+Build links with generated route URLs (for example path_for/url_for in templates and routes) instead of hardcoded path strings.
+
+This keeps links correct when APP_ROOT_PATH or route definitions change.
 
 ### Favor vendor-centered timelines
 The main center of gravity is the vendor page and its entry timeline.
