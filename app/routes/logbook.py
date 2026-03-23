@@ -1,11 +1,8 @@
 from fastapi import APIRouter, Request
 
-from app.db import (
-    count_logbook_entries,
-    list_attachments_for_entry_ids,
-    list_labels_for_entry_ids,
-    list_logbook_entries,
-)
+from app.db.attachments import list_attachments_for_entry_ids
+from app.db.entries import count_logbook_entries, list_logbook_entries
+from app.db.labels import list_labels_for_entry_ids
 from app.routes import path_for, render_template
 from app.runtime import APP_COOKIE_PATH
 
