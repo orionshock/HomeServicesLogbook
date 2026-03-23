@@ -21,9 +21,8 @@ def logbook_page(request: Request, page: int = 1, show_archived: int | None = No
     else:
         include_archived = request.cookies.get("show_archived_vendors") == "1"
 
-    current_q = q
-    normalized_search_text = current_q.strip()
-    search_text = normalized_search_text or None
+    current_q = q.strip()
+    search_text = current_q or None
 
     current_page = max(1, int(page))
     total_entries = count_logbook_entries(
