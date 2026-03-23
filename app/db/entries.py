@@ -3,6 +3,49 @@ import sqlite3
 from .connection import get_connection
 
 
+def _normalize_logbook_search_text(search_text: str | None) -> str | None:
+    normalized = (search_text or "").strip()
+    return normalized or None
+
+
+def _build_logbook_where_clause(
+    include_archived_vendors: bool,
+    search_text: str | None,
+) -> tuple[str, list[str]]:
+    clauses: list[str] = []
+    params: list[str] = []
+
+    if not include_archived_vendors:
+        clauses.append("v.vendor_archived_at IS NULL")
+
+    normalized_search_text = _normalize_logbook_search_text(search_text)
+    if normalized_search_text:
+        like_value = f"%{normalized_search_text}%"
+        clauses.append(
+            """
+            (
+                e.entry_title LIKE ?
+                OR e.entry_body_text LIKE ?
+                OR e.entry_rep_name LIKE ?
+                OR v.vendor_name LIKE ?
+                OR EXISTS (
+                    SELECT 1
+                    FROM entry_labels el
+                    JOIN labels l ON l.id = el.label_id
+                    WHERE el.entry_id = e.id
+                      AND l.label_name LIKE ?
+                )
+            )
+            """.strip()
+        )
+        params.extend([like_value, like_value, like_value, like_value, like_value])
+
+    if not clauses:
+        return "", params
+
+    return f"WHERE {' AND '.join(clauses)}", params
+
+
 def list_entries_for_vendor(vendor_id: int) -> list[sqlite3.Row]:
     with get_connection() as conn:
         return conn.execute(
@@ -16,13 +59,21 @@ def list_entries_for_vendor(vendor_id: int) -> list[sqlite3.Row]:
         ).fetchall()
 
 
-def list_logbook_entries(page: int, page_size: int = 25, include_archived_vendors: bool = False) -> list[sqlite3.Row]:
+def list_logbook_entries(
+    page: int,
+    page_size: int = 25,
+    include_archived_vendors: bool = False,
+    search_text: str | None = None,
+) -> list[sqlite3.Row]:
     safe_page = max(1, int(page))
     safe_page_size = max(1, int(page_size))
     offset = (safe_page - 1) * safe_page_size
 
     with get_connection() as conn:
-        where_clause = "" if include_archived_vendors else "WHERE v.vendor_archived_at IS NULL"
+        where_clause, where_params = _build_logbook_where_clause(
+            include_archived_vendors=include_archived_vendors,
+            search_text=search_text,
+        )
         return conn.execute(
             f"""
             SELECT
@@ -37,20 +88,27 @@ def list_logbook_entries(page: int, page_size: int = 25, include_archived_vendor
             ORDER BY COALESCE(e.entry_interaction_at, e.entry_created_at) DESC, e.id DESC
             LIMIT ? OFFSET ?
             """,
-            (safe_page_size, offset),
+            (*where_params, safe_page_size, offset),
         ).fetchall()
 
 
-def count_logbook_entries(include_archived_vendors: bool = False) -> int:
+def count_logbook_entries(
+    include_archived_vendors: bool = False,
+    search_text: str | None = None,
+) -> int:
     with get_connection() as conn:
-        where_clause = "" if include_archived_vendors else "WHERE v.vendor_archived_at IS NULL"
+        where_clause, where_params = _build_logbook_where_clause(
+            include_archived_vendors=include_archived_vendors,
+            search_text=search_text,
+        )
         row = conn.execute(
             f"""
             SELECT COUNT(*) AS total
             FROM entries e
             JOIN vendors v ON v.id = e.vendor_id
             {where_clause}
-            """
+            """,
+            where_params,
         ).fetchone()
         return int(row["total"]) if row else 0
 

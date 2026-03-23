@@ -12,12 +12,27 @@
             </div>
             <div class="logbook-archived-toggle-wrap">
                 {% if show_archived %}
-                <a href="{{ url_for('logbook_page') }}?show_archived=0" class="btn btn-danger">📦 Hide Archived</a>
+                <a href="{{ url_for('logbook_page') }}?show_archived=0{% if q %}&q={{ q|urlencode }}{% endif %}" class="btn btn-danger">📦 Hide Archived</a>
                 {% else %}
-                <a href="{{ url_for('logbook_page') }}?show_archived=1" class="btn btn-secondary">📦 Show Archived</a>
+                <a href="{{ url_for('logbook_page') }}?show_archived=1{% if q %}&q={{ q|urlencode }}{% endif %}" class="btn btn-secondary">📦 Show Archived</a>
                 {% endif %}
             </div>
         </div>
+
+        <form method="get" action="{{ url_for('logbook_page') }}" class="logbook-search-form">
+            <label for="logbook-search-input">Search</label>
+            <input
+                id="logbook-search-input"
+                type="text"
+                name="q"
+                value="{{ q }}"
+                placeholder="Search logbook"
+            >
+            {% if show_archived %}
+            <input type="hidden" name="show_archived" value="1">
+            {% endif %}
+            <button type="submit" class="btn btn-primary">Search</button>
+        </form>
     </header>
 
     {% if entries %}
@@ -33,7 +48,7 @@
 
     <nav class="logbook-pagination" aria-label="Logbook pagination">
         {% if has_prev %}
-        <a class="btn btn-secondary" href="{{ url_for('logbook_page') }}?page={{ page - 1 }}{% if show_archived %}&show_archived=1{% endif %}">Previous</a>
+        <a class="btn btn-secondary" href="{{ url_for('logbook_page') }}?page={{ page - 1 }}{% if show_archived %}&show_archived=1{% endif %}{% if q %}&q={{ q|urlencode }}{% endif %}">Previous</a>
         {% else %}
         <span class="btn btn-secondary is-disabled" aria-disabled="true">Previous</span>
         {% endif %}
@@ -41,14 +56,18 @@
         <span class="logbook-page-index">Page {{ page }}</span>
 
         {% if has_next %}
-        <a class="btn btn-secondary" href="{{ url_for('logbook_page') }}?page={{ page + 1 }}{% if show_archived %}&show_archived=1{% endif %}">Next</a>
+        <a class="btn btn-secondary" href="{{ url_for('logbook_page') }}?page={{ page + 1 }}{% if show_archived %}&show_archived=1{% endif %}{% if q %}&q={{ q|urlencode }}{% endif %}">Next</a>
         {% else %}
         <span class="btn btn-secondary is-disabled" aria-disabled="true">Next</span>
         {% endif %}
     </nav>
     {% else %}
     <div class="content-section message-card">
+        {% if q %}
+        <p>No logbook entries match "{{ q }}".</p>
+        {% else %}
         <p>No entries yet.</p>
+        {% endif %}
         <p><a href="{{ url_for('entry_vendor_picker') }}">Create a new entry</a></p>
     </div>
     {% endif %}
