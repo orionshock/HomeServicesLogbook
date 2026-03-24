@@ -33,6 +33,60 @@ For uploads:
 
 ---
 
+## Layer Boundaries (Current Contract)
+
+The app is organized around a strict route -> DB boundary with UID-shaped inputs/outputs.
+
+## Routes Layer (app/routes/*)
+
+Role:
+- Request/response flow and orchestration only.
+- Works with public UIDs only (for example: vendor_uid, entry_uid, attachment_uid).
+
+Routes handle:
+- parsing form/query/path input
+- validation and normalization of submitted values
+- calling DB-layer operation functions
+- redirects, HTTP errors, and template rendering
+
+Routes must not:
+- use or expose integer primary keys
+- include SQL
+- perform direct filesystem operations
+- depend on storage layout details
+
+## DB Layer (app/db/*)
+
+Role:
+- Owns persistence behavior and data integrity.
+
+DB modules handle:
+- SQL queries and transactions
+- resolving UIDs <-> internal integer IDs
+- enforcing relational and operational integrity
+
+DB modules may use integer IDs internally, but route-facing APIs should remain UID-shaped.
+
+## Attachments Responsibility (app/db/attachments.py)
+
+The attachments DB module owns attachment persistence across both SQLite and filesystem.
+
+It is responsible for:
+- writing uploaded files to APP_UPLOADS_DIR/YYYY/MM
+- generating safe stored filenames
+- resolving safe disk paths under APP_UPLOADS_DIR
+- deleting file + attachment row behavior together
+
+Route modules interact with attachments through UID-based DB functions (for example store_attachment_uploads_for_entry_uid and delete_entry_attachment_by_uid), and do not implement file write/delete logic themselves.
+
+## Boundary Rule Summary
+
+- Anything crossing route <-> DB boundary must be UID-shaped.
+- Integer primary keys must not cross into routes.
+- File paths and filesystem concerns must not cross into routes.
+
+---
+
 ## Current Folder Structure
 
 ```text
@@ -211,6 +265,10 @@ Actor resolution behavior is controlled by these environment variables:
 - labels.py: label CRUD/search and vendor/entry label assignment helpers.
 - settings.py: singleton settings read/update helpers.
 
+Operational preference in DB modules:
+- prefer operation-level functions that perform complete actions (for example update_entry_by_uid, create_entry_for_vendor_uid, delete_entry_by_uid)
+- avoid adding generic service layers or abstraction frameworks
+
 ---
 
 ## Current Route Map
@@ -279,9 +337,32 @@ Core persistence model:
 Behavior model:
 - Entries are the chronological source record.
 - Labels are optional metadata for organization/filtering.
-- Attachments are file-backed and linked to entries.
+- Attachments are file-backed and linked to entries, with file + DB lifecycle owned in app/db/attachments.py.
 - Settings is a singleton row (id = 1) used for home page location metadata.
 - Actor context is resolved per request (override cookie -> optional trusted upstream header -> default user).
+
+---
+
+## UID-Based Flow Examples
+
+## Example: Edit Entry
+
+1. Route handler receives entry_uid from /entry/{entry_uid}/edit.
+2. Route validates/normalizes form fields.
+3. Route calls update_entry_by_uid(entry_uid=..., ...).
+4. Route calls replace_entry_labels_by_uid(entry_uid, label_ids) for labels.
+5. Route calls delete_entry_attachment_by_uid(attachment_uid) and store_attachment_uploads_for_entry_uid(entry_uid, uploads, ...).
+6. Route returns redirect/template response.
+
+Primary keys remain internal to DB modules during all operations.
+
+## Example: Delete Entry
+
+1. Route receives entry_uid at /entry/{entry_uid}/delete.
+2. Route calls delete_entry_by_uid(entry_uid).
+3. DB layer resolves entry_uid -> entry id, deletes attachment files through db/attachments, then removes attachment rows, label joins, and the entry row.
+4. DB layer returns vendor_uid for redirect.
+5. Route redirects using vendor_uid.
 
 ---
 

@@ -129,10 +129,17 @@ Avoid swallowing exceptions silently.
 Routes should:
 - receive request data
 - validate it
-- call service/database helpers
+- call database helpers
 - return response/template
 
 Routes should not contain large blocks of business logic.
+
+Boundary requirements for routes:
+- route-facing identifiers are UIDs (vendor_uid, entry_uid, attachment_uid)
+- do not use or expose integer primary keys
+- do not include SQL
+- do not perform filesystem/file I/O
+- do not depend on upload/storage path layout
 
 ### Prefer explicit route names
 Use clear route names and paths.
@@ -160,6 +167,12 @@ HTTP route handlers belong in app/routes/*.py.
 Use app/main.py only for app wiring (middleware, exception handlers, and router registration).
 
 Avoid moving route behavior into generic framework layers unless there is repeated behavior that is clearly shared.
+
+Routes are orchestration-only by default:
+- parse input
+- validate/normalize
+- call DB operations
+- render/redirect
 
 ---
 
@@ -195,6 +208,16 @@ User-provided content should render as text unless a specific sanitization strat
 ---
 
 ## Database Style
+
+### DB layer owns persistence behavior
+DB modules in app/db/*.py are responsible for persistence and data integrity.
+
+They own:
+- SQL and transactions
+- UID <-> primary key resolution
+- integrity of multi-step data operations
+
+They may use integer IDs internally, but should expose UID-shaped functions to routes.
 
 ### Use parameterized SQL only
 Never build SQL queries with string interpolation.
@@ -232,8 +255,13 @@ Good:
 - get_vendor_by_uid
 - list_entries_for_vendor
 - replace_entry_labels
+- update_entry_by_uid
+- delete_entry_by_uid
+- store_attachment_uploads_for_entry_uid
 
 Avoid generic repository or service abstractions unless repetition is obvious and the abstraction removes real duplication.
+
+Prefer operation-level DB functions that perform complete data actions over many thin wrapper functions.
 
 ### Centralize DB access
 Keep database access in dedicated helper/service modules rather than scattering SQL everywhere.
@@ -248,6 +276,16 @@ or a similarly simple structure.
 ---
 
 ## File Handling Style
+
+### Attachments module owns file persistence
+Attachment file operations are owned by app/db/attachments.py.
+
+This module is responsible for:
+- writing uploaded files
+- safe path resolution under APP_UPLOADS_DIR
+- deleting files and attachment rows together when required
+
+Route modules should call UID-based attachment DB functions and must not manipulate attachment files directly.
 
 ### Never trust uploaded filenames
 Always generate a safe internal filename.
@@ -356,6 +394,11 @@ Use:
 - Jinja templates
 - SQLite
 - filesystem uploads
+
+Boundary rule:
+- route <-> DB exchange is UID-shaped
+- primary keys stay internal to DB modules
+- filesystem concerns stay inside DB attachment operations
 
 ### Avoid unnecessary frontend complexity
 Do not introduce React, Vue, or other frontend frameworks unless explicitly requested.

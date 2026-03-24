@@ -25,6 +25,12 @@ Labels are optional organizational metadata that can be attached to both vendors
 - Most non-key fields are optional.
 - entries is the center of chronological history.
 
+Layer boundary contract:
+- app/routes/* uses UID-shaped values only and orchestrates request/response flow.
+- app/db/* owns SQL, transactions, UID <-> PK resolution, and data integrity behavior.
+- integer primary keys remain internal to DB modules and must not be exposed to routes.
+- filesystem path and storage concerns remain inside DB attachment operations.
+
 ---
 
 ## Schema Lifecycle
@@ -120,6 +126,8 @@ CREATE TABLE IF NOT EXISTS attachments (
 Notes:
 - attachment_relative_path is stored with forward slashes.
 - Files are persisted under APP_UPLOADS_DIR/YYYY/MM/ (default: data/uploads/YYYY/MM/).
+- Attachment lifecycle behavior (write, safe path resolution, delete file + row coordination) is owned by app/db/attachments.py.
+- Route handlers should call UID-based attachment DB functions and should not perform direct file I/O.
 
 ## labels
 
@@ -241,3 +249,7 @@ CREATE INDEX IF NOT EXISTS idx_entry_labels_label_id
 - settings is a singleton table keyed by id = 1
 
 Labels are organizational metadata and do not replace timeline data in entries.
+
+Boundary reminder:
+- Route-to-DB calls should be UID-oriented (vendor_uid, entry_uid, attachment_uid).
+- DB modules may use integer IDs internally to execute relational operations.
