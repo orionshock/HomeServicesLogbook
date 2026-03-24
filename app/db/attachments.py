@@ -172,15 +172,6 @@ def resolve_attachment_disk_path(relative_path: str) -> Path | None:
     return _resolve_attachment_path(relative_path)
 
 
-def delete_attachment_file(relative_path: str) -> None:
-    """Delete a single attachment file by relative path. A missing file is silently ignored."""
-    abs_path = _resolve_attachment_path(relative_path)
-    if abs_path is None:
-        return
-    if abs_path.exists() and abs_path.is_file():
-        abs_path.unlink()
-
-
 def _make_stored_filename(original_name: str) -> str:
     ext = Path(original_name or "").suffix.lower()
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
@@ -267,13 +258,15 @@ def store_attachment_uploads(
         store_attachment_upload(upload, entry_id=entry_id, actor=actor, max_upload_bytes=max_upload_bytes)
 
 
-def delete_entry_attachment_by_uid(attachment_uid: str) -> tuple[sqlite3.Row, None] | tuple[None, None]:
+def delete_entry_attachment_by_uid(attachment_uid: str) -> bool:
     """
-    Delete an attachment by its UID and return the deleted attachment row.
-    
-    Returns:
-        (attachment_row, None) if attachment was found and deleted
-        (None, None) if attachment was not found
+    Delete an attachment by UID including physical file cleanup.
+
+    Returns True if an attachment row existed and was deleted, else False.
+
+    Missing files are non-fatal.
+    Invalid paths raise ValueError.
+    Existing files that cannot be deleted raise OSError.
     """
     with get_connection() as conn:
         attachment = conn.execute(
@@ -286,13 +279,39 @@ def delete_entry_attachment_by_uid(attachment_uid: str) -> tuple[sqlite3.Row, No
             (attachment_uid,),
         ).fetchone()
         if attachment is None:
-            return None, None
+            return False
 
+    relative_path = str(attachment["attachment_relative_path"] or "").strip()
+    filename = str(attachment["attachment_original_filename"] or "").strip() or "(unknown filename)"
+    relative_display = relative_path or "(empty path)"
+    abs_path = _resolve_attachment_path(relative_path)
+    if abs_path is None:
+        raise ValueError(
+            f"Attachment path escapes uploads root for '{filename}' "
+            f"(path: {relative_display})"
+        )
+
+    if abs_path.exists() and abs_path.is_dir():
+        raise ValueError(
+            f"Attachment path is a directory for '{filename}' "
+            f"(path: {relative_display})"
+        )
+
+    if abs_path.exists():
+        try:
+            abs_path.unlink()
+        except OSError as exc:
+            raise OSError(
+                f"Could not delete attachment '{filename}' "
+                f"(path: {relative_display}): {exc.strerror or 'unknown error'}"
+            ) from exc
+
+    with get_connection() as conn:
         conn.execute(
             "DELETE FROM attachments WHERE id = ?",
             (attachment["id"],),
         )
-        return attachment, None
+    return True
 
 
 def store_attachment_uploads_for_entry_uid(
