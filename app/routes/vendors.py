@@ -552,7 +552,7 @@ def vendor_delete_confirm(request: Request, vendor_uid: str):
     try:
         delete_vendor_by_uid(vendor_uid)
     except (ValueError, OSError) as exc:
-        return render_template(
+        response = render_template(
             request,
             "vendor_delete.html",
             {
@@ -569,6 +569,8 @@ def vendor_delete_confirm(request: Request, vendor_uid: str):
                 "page_error": str(exc),
             },
         )
+        response.status_code = 400
+        return response
 
     # Redirect to vendors list showing archived vendors, since the deleted vendor was archived.
     return RedirectResponse(
