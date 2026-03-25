@@ -27,6 +27,7 @@
     archiveCount: 5,
     pauseMsBetweenVendors: 250,
     pauseMsBetweenEntries: 200,
+    endpointTests: true,
     dryRun: false,
     logPrefix: "[HSL Dev Seed]",
   };
@@ -203,6 +204,64 @@
 
   function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  function shortError(error) {
+    if (!error) {
+      return "Unknown error";
+    }
+    if (error instanceof Error) {
+      return error.message;
+    }
+    return String(error);
+  }
+
+  function createEndpointReport() {
+    return {
+      checks: [],
+      passed: 0,
+      failed: 0,
+      startedAt: new Date().toISOString(),
+      completedAt: null,
+    };
+  }
+
+  function addEndpointResult(report, result) {
+    report.checks.push(result);
+    if (result.ok) {
+      report.passed += 1;
+    } else {
+      report.failed += 1;
+    }
+  }
+
+  function finalizeEndpointReport(report) {
+    report.completedAt = new Date().toISOString();
+    return report;
+  }
+
+  function endpointSummaryText(report) {
+    const total = report.checks.length;
+    return `Endpoint checks: ${report.passed}/${total} passed, ${report.failed} failed.`;
+  }
+
+  function printEndpointReport(report, logPrefix) {
+    const total = report.checks.length;
+    const rows = report.checks.map(item => ({
+      method: item.method,
+      path: item.path,
+      ok: item.ok,
+      status: item.status,
+      durationMs: item.durationMs,
+      detail: item.detail || "",
+    }));
+    console.group(`${logPrefix} Endpoint Report (${report.passed}/${total} passed)`);
+    console.table(rows);
+    if (report.failed) {
+      const failures = report.checks.filter(item => !item.ok);
+      console.warn(`${logPrefix} Failed endpoint checks`, failures);
+    }
+    console.groupEnd();
   }
 
   function randInt(min, max) {
@@ -500,6 +559,372 @@
     return body;
   }
 
+  async function runEndpointCheck(reportProgress, endpointReport, spec, checkFn) {
+    const started = performance.now();
+    try {
+      const maybeDetail = await checkFn();
+      const durationMs = Math.round(performance.now() - started);
+      const detail = typeof maybeDetail === "string" ? maybeDetail : "";
+      addEndpointResult(endpointReport, {
+        name: spec.name,
+        method: spec.method,
+        path: spec.path,
+        ok: true,
+        status: "OK",
+        durationMs,
+        detail,
+      });
+      logProgress(reportProgress, `Endpoint OK: ${spec.method} ${spec.path} (${durationMs} ms)`);
+      return true;
+    } catch (error) {
+      const durationMs = Math.round(performance.now() - started);
+      const detail = shortError(error);
+      addEndpointResult(endpointReport, {
+        name: spec.name,
+        method: spec.method,
+        path: spec.path,
+        ok: false,
+        status: "FAILED",
+        durationMs,
+        detail,
+      });
+      logProgress(reportProgress, `Endpoint FAILED: ${spec.method} ${spec.path} (${durationMs} ms) - ${detail}`);
+      return false;
+    }
+  }
+
+  async function assertGetOk(path) {
+    const response = await fetch(appUrl(path), {
+      method: "GET",
+      redirect: "follow",
+      credentials: "same-origin",
+    });
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      throw new Error(`Status ${response.status}; ${body.slice(0, 180)}`);
+    }
+    return response;
+  }
+
+  async function assertPostFormOk(path, fields) {
+    const response = await fetch(appUrl(path), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+      },
+      body: fields.toString(),
+      redirect: "follow",
+      credentials: "same-origin",
+    });
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      throw new Error(`Status ${response.status}; ${body.slice(0, 180)}`);
+    }
+    return response;
+  }
+
+  async function assertPostJsonOk(path, payload) {
+    const response = await fetch(appUrl(path), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+      redirect: "follow",
+      credentials: "same-origin",
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const message = body && body.error ? body.error : `Status ${response.status}`;
+      throw new Error(message);
+    }
+    return body;
+  }
+
+  function extractDynamicUidsFromVendorHtml(html) {
+    const entryUids = new Set();
+    const attachmentUids = new Set();
+    const entryRegex = /\/entry\/([^/?#"']+)\/edit/gi;
+    const attachmentRegex = /\/attachments\/([^/?#"']+)/gi;
+    let match = null;
+
+    while ((match = entryRegex.exec(html)) !== null) {
+      if (match[1]) {
+        entryUids.add(decodeURIComponent(match[1]));
+      }
+    }
+
+    while ((match = attachmentRegex.exec(html)) !== null) {
+      if (match[1]) {
+        attachmentUids.add(decodeURIComponent(match[1]));
+      }
+    }
+
+    return {
+      entryUids: Array.from(entryUids),
+      attachmentUids: Array.from(attachmentUids),
+    };
+  }
+
+  async function createAttachmentEntry(vendor) {
+    const form = new FormData();
+    form.append("entry_title", `Attachment smoke ${randomTicket()}`);
+    form.append("entry_rep_name", `${pick(FIRST_NAMES)} ${String.fromCharCode(randInt(65, 90))}.`);
+    form.append("entry_body_text", `Attachment endpoint smoke test note for ${vendor.vendor_name}.`);
+    form.append("entry_interaction_at", randomPastUtcIso());
+
+    const fileName = `smoke-${randomDigits(6)}.txt`;
+    const fileBody = `Smoke attachment for ${vendor.vendor_name} at ${new Date().toISOString()}\n`;
+    const blob = new Blob([fileBody], { type: "text/plain" });
+    const upload = new File([blob], fileName, { type: "text/plain" });
+    form.append("attachments", upload);
+
+    const response = await fetch(appUrl(`/vendor/${encodeURIComponent(vendor.vendorUid)}/entries`), {
+      method: "POST",
+      body: form,
+      redirect: "follow",
+      credentials: "same-origin",
+    });
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      throw new Error(`Attachment entry create failed (${response.status}) ${body.slice(0, 200)}`);
+    }
+  }
+
+  async function exerciseCommonEndpointChecks(reportProgress, endpointReport) {
+    const staticGetChecks = [
+      { name: "Home", method: "GET", path: "/" },
+      { name: "Vendors list", method: "GET", path: "/vendors" },
+      { name: "Vendor new form", method: "GET", path: "/vendors/new" },
+      { name: "Entry vendor picker", method: "GET", path: "/entries/new" },
+      { name: "Logbook", method: "GET", path: "/logbook" },
+      { name: "Labels admin", method: "GET", path: "/labels" },
+      { name: "Settings form", method: "GET", path: "/settings" },
+      { name: "Label suggest API", method: "GET", path: "/api/labels/suggest?q=smoke" },
+    ];
+
+    for (const spec of staticGetChecks) {
+      await runEndpointCheck(reportProgress, endpointReport, spec, async () => {
+        await assertGetOk(spec.path);
+      });
+    }
+
+    await runEndpointCheck(
+      reportProgress,
+      endpointReport,
+      { name: "Actor set", method: "POST", path: "/actor/set" },
+      async () => {
+        const response = await fetch(appUrl("/actor/set"), {
+          method: "POST",
+          body: new URLSearchParams({ actor_id: `smoke-user-${randomDigits(4)}` }),
+          redirect: "follow",
+          credentials: "same-origin",
+          headers: {
+            "X-Requested-With": "fetch",
+            "Accept": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          const body = await response.text().catch(() => "");
+          throw new Error(`Status ${response.status}; ${body.slice(0, 180)}`);
+        }
+
+        const payload = await response.json().catch(() => null);
+        if (!payload || payload.ok !== true || !payload.current_actor) {
+          throw new Error("Invalid actor payload");
+        }
+      },
+    );
+
+    await runEndpointCheck(
+      reportProgress,
+      endpointReport,
+      { name: "Actor reset", method: "POST", path: "/actor/reset" },
+      async () => {
+        const response = await fetch(appUrl("/actor/reset"), {
+          method: "POST",
+          body: new URLSearchParams(),
+          redirect: "follow",
+          credentials: "same-origin",
+          headers: {
+            "X-Requested-With": "fetch",
+            "Accept": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          const body = await response.text().catch(() => "");
+          throw new Error(`Status ${response.status}; ${body.slice(0, 180)}`);
+        }
+
+        const payload = await response.json().catch(() => null);
+        if (!payload || payload.ok !== true || !payload.current_actor) {
+          throw new Error("Invalid actor payload");
+        }
+      },
+    );
+
+    await runEndpointCheck(
+      reportProgress,
+      endpointReport,
+      { name: "Calendar export", method: "POST", path: "/calendar/export" },
+      async () => {
+        const date = new Date();
+        const yyyy = String(date.getUTCFullYear());
+        const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
+        const dd = String(date.getUTCDate()).padStart(2, "0");
+        const response = await fetch(appUrl("/calendar/export"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+          },
+          body: new URLSearchParams({
+            title: `Smoke Calendar ${randomDigits(4)}`,
+            event_date: `${yyyy}-${mm}-${dd}`,
+            event_time: "",
+            description: "Calendar export route smoke test.",
+          }).toString(),
+          redirect: "follow",
+          credentials: "same-origin",
+        });
+        if (!response.ok) {
+          const body = await response.text().catch(() => "");
+          throw new Error(`Status ${response.status}; ${body.slice(0, 180)}`);
+        }
+        const contentType = (response.headers.get("content-type") || "").toLowerCase();
+        if (!contentType.includes("text/calendar")) {
+          throw new Error(`Unexpected content-type: ${contentType || "(missing)"}`);
+        }
+      },
+    );
+  }
+
+  async function exerciseDynamicEndpointChecks(reportProgress, endpointReport, vendor) {
+    await runEndpointCheck(
+      reportProgress,
+      endpointReport,
+      { name: "Vendor detail", method: "GET", path: `/vendor/${vendor.vendorUid}` },
+      async () => {
+        await assertGetOk(`/vendor/${encodeURIComponent(vendor.vendorUid)}`);
+      },
+    );
+
+    await runEndpointCheck(
+      reportProgress,
+      endpointReport,
+      { name: "Vendor edit form", method: "GET", path: `/vendor/${vendor.vendorUid}/edit` },
+      async () => {
+        await assertGetOk(`/vendor/${encodeURIComponent(vendor.vendorUid)}/edit`);
+      },
+    );
+
+    await runEndpointCheck(
+      reportProgress,
+      endpointReport,
+      { name: "Vendor edit submit", method: "POST", path: `/vendor/${vendor.vendorUid}/edit` },
+      async () => {
+        const payload = new URLSearchParams({
+          vendor_name: vendor.vendor_name,
+          vendor_account_number: `${randInt(1000, 9999)}-${randomDigits(6)}`,
+          vendor_portal_url: randomPortalUrl(vendor.vendor_name, vendor.vendor_label),
+          vendor_portal_username: randomPortalUsername(),
+          vendor_phone_number: randomPhoneNumber(),
+          vendor_address: randomStreetAddress(),
+          vendor_notes: `Smoke edit check ${randomTicket()}`,
+        });
+        (vendor.seedLabelUids || []).forEach(uid => payload.append("label_uids", uid));
+        await assertPostFormOk(`/vendor/${encodeURIComponent(vendor.vendorUid)}/edit`, payload);
+      },
+    );
+
+    await runEndpointCheck(
+      reportProgress,
+      endpointReport,
+      { name: "Vendor entry form", method: "GET", path: `/vendor/${vendor.vendorUid}/entries/new` },
+      async () => {
+        await assertGetOk(`/vendor/${encodeURIComponent(vendor.vendorUid)}/entries/new`);
+      },
+    );
+
+    await createAttachmentEntry(vendor);
+    const vendorDetailResponse = await assertGetOk(`/vendor/${encodeURIComponent(vendor.vendorUid)}`);
+    const vendorDetailHtml = await vendorDetailResponse.text();
+    const extractedUids = extractDynamicUidsFromVendorHtml(vendorDetailHtml);
+    const entryUid = extractedUids.entryUids[0];
+    const attachmentUid = extractedUids.attachmentUids[0];
+
+    if (!entryUid) {
+      throw new Error("Could not discover any entry UID from vendor detail HTML");
+    }
+
+    await runEndpointCheck(
+      reportProgress,
+      endpointReport,
+      { name: "Entry edit form", method: "GET", path: `/entry/${entryUid}/edit` },
+      async () => {
+        await assertGetOk(`/entry/${encodeURIComponent(entryUid)}/edit`);
+      },
+    );
+
+    await runEndpointCheck(
+      reportProgress,
+      endpointReport,
+      { name: "Entry edit submit", method: "POST", path: `/entry/${entryUid}/edit` },
+      async () => {
+        const payload = new URLSearchParams({
+          entry_title: `Edited ${randomTicket()}`,
+          entry_interaction_at: randomPastUtcIso(),
+          entry_rep_name: `${pick(FIRST_NAMES)} ${String.fromCharCode(randInt(65, 90))}.`,
+          entry_body_text: `Edited by smoke check ${new Date().toISOString()}`,
+          next: appUrl(`/vendor/${encodeURIComponent(vendor.vendorUid)}`),
+        });
+        await assertPostFormOk(`/entry/${encodeURIComponent(entryUid)}/edit`, payload);
+      },
+    );
+
+    if (attachmentUid) {
+      await runEndpointCheck(
+        reportProgress,
+        endpointReport,
+        { name: "Attachment download", method: "GET", path: `/attachments/${attachmentUid}` },
+        async () => {
+          await assertGetOk(`/attachments/${encodeURIComponent(attachmentUid)}`);
+        },
+      );
+    }
+
+    await runEndpointCheck(
+      reportProgress,
+      endpointReport,
+      { name: "Entry delete", method: "POST", path: `/entry/${entryUid}/delete` },
+      async () => {
+        const payload = new URLSearchParams({
+          next: appUrl(`/vendor/${encodeURIComponent(vendor.vendorUid)}`),
+        });
+        await assertPostFormOk(`/entry/${encodeURIComponent(entryUid)}/delete`, payload);
+      },
+    );
+
+    await runEndpointCheck(
+      reportProgress,
+      endpointReport,
+      { name: "Vendor archive", method: "POST", path: `/vendor/${vendor.vendorUid}/archive` },
+      async () => {
+        await assertPostFormOk(`/vendor/${encodeURIComponent(vendor.vendorUid)}/archive`, new URLSearchParams());
+      },
+    );
+
+    await runEndpointCheck(
+      reportProgress,
+      endpointReport,
+      { name: "Vendor unarchive", method: "POST", path: `/vendor/${vendor.vendorUid}/unarchive` },
+      async () => {
+        await assertPostFormOk(`/vendor/${encodeURIComponent(vendor.vendorUid)}/unarchive`, new URLSearchParams());
+      },
+    );
+  }
+
   function extractVendorUid(finalUrl) {
     const match = finalUrl.match(/\/vendor\/([^/?#]+)/i);
     if (!match) throw new Error(`Could not extract vendor UID from URL: ${finalUrl}`);
@@ -645,6 +1070,7 @@
     const pauseMsBetweenEntries = Math.max(MIN_ACTION_PAUSE_MS, Number(cfg.pauseMsBetweenEntries) || 0);
     const vendorPool = buildVendorPool();
     const totalEntriesTarget = cfg.vendors * cfg.entriesPerVendor;
+    const endpointReport = createEndpointReport();
 
     if (cfg.vendors > vendorPool.length) {
       throw new Error(`Requested ${cfg.vendors} vendors, but only ${vendorPool.length} vendor definitions are available.`);
@@ -659,6 +1085,11 @@
     }
 
     logProgress(reportProgress, `Starting seed: 0/${cfg.vendors} vendors, 0/${totalEntriesTarget} entries...`);
+
+    if (cfg.endpointTests) {
+      logProgress(reportProgress, "Running endpoint smoke checks for HTML and app routes...");
+      await exerciseCommonEndpointChecks(reportProgress, endpointReport);
+    }
 
     const settingsResult = await exerciseSettingsRoutes(reportProgress);
 
@@ -699,6 +1130,11 @@
         reportProgress,
         `Vendor complete: ${vendor.vendor_name}. Progress: ${createdVendors.length}/${cfg.vendors} vendors, ${entriesCreated}/${totalEntriesTarget} entries, ${seenLabelUids.size} labels seen.`,
       );
+
+      if (cfg.endpointTests && i === 0) {
+        logProgress(reportProgress, `Running dynamic endpoint checks using vendor ${vendor.vendor_name}...`);
+        await exerciseDynamicEndpointChecks(reportProgress, endpointReport, vendor);
+      }
     }
 
     const toArchive = createdVendors.slice(-cfg.archiveCount);
@@ -715,6 +1151,7 @@
     const summary = {
       settingsUpdated: settingsResult,
       labelRouteTest: labelRouteResult,
+      endpointReport: finalizeEndpointReport(endpointReport),
       vendorsCreated: createdVendors.length,
       entriesCreated,
       labelsGenerated: seenLabelUids.size,
@@ -723,13 +1160,18 @@
       createdVendorNames: createdVendors.map(v => v.vendor_name),
     };
 
+    if (cfg.endpointTests) {
+      printEndpointReport(summary.endpointReport, cfg.logPrefix);
+    }
+
     reportProgress(
-      `Seed complete. Settings: ${settingsResult.location_name}. Label routes: ${labelRouteResult.renamedName}. Vendors: ${createdVendors.length}. Entries: ${entriesCreated}. Labels: ${seenLabelUids.size}. Archived: ${toArchive.length}.`,
+      `Seed complete. ${cfg.endpointTests ? `${endpointSummaryText(summary.endpointReport)} ` : ""}Settings: ${settingsResult.location_name}. Label routes: ${labelRouteResult.renamedName}. Vendors: ${createdVendors.length}. Entries: ${entriesCreated}. Labels: ${seenLabelUids.size}. Archived: ${toArchive.length}.`,
     );
 
     return {
       settingsUpdated: settingsResult,
       labelRouteTest: labelRouteResult,
+      endpointReport: summary.endpointReport,
       vendorsCreated: createdVendors,
       entriesCreated,
       labelsGenerated: seenLabelUids.size,
@@ -757,7 +1199,10 @@
       setStatus("Seeding in progress. Please wait...");
       try {
         const result = await run({ onProgress: setStatus });
-        setStatus(`Seed complete. Vendors: ${result.vendorsCreated.length}, Entries: ${result.entriesCreated}, Labels: ${result.labelsGenerated}`);
+        const endpointSummary = result.endpointReport
+          ? `${result.endpointReport.passed}/${result.endpointReport.checks.length} endpoint checks passed`
+          : "endpoint checks skipped";
+        setStatus(`Seed complete. ${endpointSummary}. Vendors: ${result.vendorsCreated.length}, Entries: ${result.entriesCreated}, Labels: ${result.labelsGenerated}`);
       } catch (error) {
         setStatus(`Seed run failed: ${error instanceof Error ? error.message : "Unexpected error."}`);
       } finally {
