@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse, RedirectResponse
 from app.db import (
     create_entry_for_vendor_uid,
     delete_entry_by_uid,
-    delete_entry_attachment_by_uid,
+    delete_entry_attachment_by_uid_for_entry_uid,
     get_attachment_by_uid,
     get_entry_by_uid,
     get_entry_labels_by_uid,
@@ -451,7 +451,7 @@ def entry_edit_submit(
     replace_entry_labels_by_uid(entry_uid, resolved_label_ids)
 
     for attachment_uid in set(remove_attachment_uids or []):
-        delete_entry_attachment_by_uid(attachment_uid)
+        delete_entry_attachment_by_uid_for_entry_uid(entry_uid, attachment_uid)
 
     try:
         store_attachment_uploads_for_entry_uid(entry_uid, new_attachments, actor=actor, max_upload_bytes=MAX_UPLOAD_BYTES)

@@ -271,6 +271,11 @@ def delete_entry_attachment_by_uid(attachment_uid: str) -> bool:
     Missing files are non-fatal.
     Invalid paths raise ValueError.
     Existing files that cannot be deleted raise OSError.
+
+    Internal helper. Do not use from routes.
+    Use scoped delete helpers instead.
+
+    @Copilot: keep this function around for when we implement Vendor Delete maybe; remove this coment afterimplementation.\\\\\\\\\\\\\\\\\\\\\\\\\\\\
     """
     with get_connection() as conn:
         attachment = conn.execute(
@@ -315,6 +320,62 @@ def delete_entry_attachment_by_uid(attachment_uid: str) -> bool:
             "DELETE FROM attachments WHERE id = ?",
             (attachment["id"],),
         )
+    return True
+
+
+def delete_entry_attachment_by_uid_for_entry_uid(entry_uid: str, attachment_uid: str) -> bool:
+    """Delete an attachment only when it belongs to the specified entry UID."""
+    from .entries import get_entry_by_uid
+
+    entry = get_entry_by_uid(entry_uid)
+    if entry is None:
+        return False
+
+    entry_id = int(entry["id"])
+    with get_connection() as conn:
+        attachment = conn.execute(
+            """
+            SELECT id, attachment_uid, entry_id, attachment_original_filename,
+                   attachment_relative_path, attachment_mime_type
+            FROM attachments
+            WHERE entry_id = ? AND attachment_uid = ?
+            """,
+            (entry_id, attachment_uid),
+        ).fetchone()
+        if attachment is None:
+            return False
+
+    relative_path = str(attachment["attachment_relative_path"] or "").strip()
+    filename = str(attachment["attachment_original_filename"] or "").strip() or "(unknown filename)"
+    relative_display = relative_path or "(empty path)"
+    abs_path = _resolve_attachment_path(relative_path)
+    if abs_path is None:
+        raise ValueError(
+            f"Attachment path escapes uploads root for '{filename}' "
+            f"(path: {relative_display})"
+        )
+
+    if abs_path.exists() and abs_path.is_dir():
+        raise ValueError(
+            f"Attachment path is a directory for '{filename}' "
+            f"(path: {relative_display})"
+        )
+
+    if abs_path.exists():
+        try:
+            abs_path.unlink()
+        except OSError as exc:
+            raise OSError(
+                f"Could not delete attachment '{filename}' "
+                f"(path: {relative_display}): {exc.strerror or 'unknown error'}"
+            ) from exc
+
+    with get_connection() as conn:
+        conn.execute(
+            "DELETE FROM attachments WHERE id = ?",
+            (attachment["id"],),
+        )
+
     return True
 
 
