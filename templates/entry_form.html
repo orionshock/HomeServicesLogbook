@@ -93,6 +93,14 @@
                 <div class="entry-actions-row">
                     <div class="entry-actions-left">
                         <a href="{{ cancel_url }}" class="btn btn-secondary">Cancel</a>
+                        {% if mode == "edit" and entry and entry.entry_uid %}
+                        <button
+                            type="submit"
+                            form="entry-delete-form"
+                            class="btn btn-danger"
+                            onclick="return confirm('Delete this entry permanently?');"
+                        >Delete Entry</button>
+                        {% endif %}
                     </div>
                     <div class="entry-actions-right-group">
                         <button type="button" id="calendar-trigger" class="btn btn-secondary">Add Calendar Event</button>
@@ -126,6 +134,14 @@
                     </div>
                 </section>
             </form>
+
+            {% if mode == "edit" and entry and entry.entry_uid %}
+            {% if return_next %}
+            <form id="entry-delete-form" method="post" action="{{ url_for('entry_delete', entry_uid=entry.entry_uid) }}?next={{ return_next|urlencode }}"></form>
+            {% else %}
+            <form id="entry-delete-form" method="post" action="{{ url_for('entry_delete', entry_uid=entry.entry_uid) }}"></form>
+            {% endif %}
+            {% endif %}
         </section>
 
         <div class="entry-layout-resizer" id="entry-layout-resizer" role="separator" aria-orientation="vertical" aria-label="Resize entry and history panels"></div>
