@@ -9,7 +9,7 @@
 | Templates | Jinja2 |
 | Database | SQLite |
 | Storage | Local filesystem |
-| Frontend | Server-rendered HTML + minimal vanilla JS |
+| Frontend | Server-rendered HTML + focused vanilla JS |
 
 No frontend framework, no build system, no ORM.
 
@@ -20,40 +20,42 @@ No frontend framework, no build system, no ORM.
 ```text
 Browser Request
   -> FastAPI app (app/main.py)
-    -> Route module (app/routes/*.py)
+    -> actor_context_middleware resolves request.state.current_actor
+    -> Route module (app/routes/*.py or app/actor.py)
       -> DB helper module (app/db/*.py)
         -> SQLite (APP_DB_PATH, default data/logbook.db)
-      -> Jinja template render (templates/*.html)
-  -> HTML response
+      -> Jinja template render (templates/*.html) or JSON/file response
+  -> HTML, JSON, redirect, or file download response
 ```
 
 For uploads:
 - Files are written to APP_UPLOADS_DIR/YYYY/MM (default: data/uploads/YYYY/MM).
-- SQLite stores attachment metadata and relative file path.
+- SQLite stores attachment metadata and the relative upload path.
+- Route handlers validate form input and size limits, while app/db/attachments.py owns disk writes and cleanup.
 
 ---
 
 ## Layer Boundaries (Current Contract)
 
-The app is organized around a strict route -> DB boundary with UID-shaped inputs/outputs.
+The app is organized around a route -> DB boundary where public identifiers remain UID-shaped and persistence details stay in app/db.
 
-## Routes Layer (app/routes/*)
+## Routes Layer (app/routes/* and app/actor.py)
 
 Role:
-- Request/response flow and orchestration only.
-- Works with public UIDs only (for example: vendor_uid, entry_uid, attachment_uid).
+- Request/response flow and orchestration.
+- Works with public identifiers such as vendor_uid, entry_uid, attachment_uid, and label_uid.
 
 Routes handle:
-- parsing form/query/path input
+- parsing form, query, path, JSON, and upload input
 - validation and normalization of submitted values
-- calling DB-layer operation functions
-- redirects, HTTP errors, and template rendering
+- calling DB-layer operation helpers
+- redirects, HTTP errors, template rendering, and API/file responses
 
 Routes must not:
-- use or expose integer primary keys
+- expose integer primary keys
 - include SQL
-- perform direct filesystem operations
-- depend on storage layout details
+- write or delete attachment files directly
+- depend on storage layout details beyond calling DB helpers
 
 ## DB Layer (app/db/*)
 
@@ -63,27 +65,29 @@ Role:
 DB modules handle:
 - SQL queries and transactions
 - resolving UIDs <-> internal integer IDs
-- enforcing relational and operational integrity
+- multi-step delete/update behavior
+- attachment file persistence and safe path resolution
 
-DB modules may use integer IDs internally, but route-facing APIs should remain UID-shaped.
+DB modules may use integer IDs internally, but route-facing helpers keep public identifiers UID-shaped.
 
 ## Attachments Responsibility (app/db/attachments.py)
 
-The attachments DB module owns attachment persistence across both SQLite and filesystem.
+The attachments module owns attachment persistence across SQLite and the filesystem.
 
 It is responsible for:
 - writing uploaded files to APP_UPLOADS_DIR/YYYY/MM
-- generating safe stored filenames
+- sanitizing original filenames for metadata
+- generating collision-resistant stored filenames
 - resolving safe disk paths under APP_UPLOADS_DIR
-- deleting file + attachment row behavior together
+- deleting file + attachment row behavior together when requested through DB helpers
 
-Route modules interact with attachments through UID-based DB functions (for example store_attachment_uploads_for_entry_uid and delete_entry_attachment_by_uid), and do not implement file write/delete logic themselves.
+Route modules interact with attachments through DB functions such as store_attachment_uploads_for_entry_uid, resolve_attachment_disk_path, and delete_entry_attachment_by_uid_for_entry_uid.
 
 ## Boundary Rule Summary
 
-- Anything crossing route <-> DB boundary must be UID-shaped.
-- Integer primary keys must not cross into routes.
-- File paths and filesystem concerns must not cross into routes.
+- Public identifiers crossing the route <-> DB boundary remain UID-shaped.
+- Integer primary keys stay inside DB modules.
+- Filesystem concerns stay inside attachment DB helpers, except that routes may return a FileResponse using a safe path returned by resolve_attachment_disk_path.
 
 ---
 
@@ -92,67 +96,71 @@ Route modules interact with attachments through UID-based DB functions (for exam
 ```text
 HomeServicesLogbook-Dev/
 |-- app/
-|   |-- actor.py (actor resolution logic + actor override routes)
+|   |-- actor.py (actor resolution logic and actor override routes)
 |   |-- main.py (FastAPI app setup, middleware, exception handlers, router registration)
 |   |-- runtime.py (environment-driven runtime config values and path resolution)
-|   |-- utils.py (shared helpers for timestamps, IDs, and validation)
+|   |-- utils.py (shared helpers for text normalization, IDs, and timestamps)
 |   |-- db/
 |   |   |-- connection.py (SQLite connection factory with Row mapping)
-|   |   |-- schema.py (schema initialization and singleton settings seed)
-|   |   |-- vendors.py (vendor CRUD, listing, archive/unarchive operations)
-|   |   |-- entries.py (entry CRUD, listing, and timeline helpers)
-|   |   |-- attachments.py (attachment metadata persistence and lookup)
-|   |   |-- labels.py (label CRUD, search, and vendor/entry label linking)
+|   |   |-- schema.py (schema initialization and default settings seed)
+|   |   |-- vendors.py (vendor CRUD, archive/unarchive, delete context, permanent delete)
+|   |   |-- entries.py (entry CRUD, logbook listing/counting, form-context aggregation)
+|   |   |-- attachments.py (attachment metadata persistence, safe path resolution, upload/delete lifecycle)
+|   |   |-- labels.py (label CRUD, search, and vendor/entry label assignment helpers)
 |   |   |-- settings.py (singleton settings read/update helpers for id = 1)
 |   |   `-- __init__.py (barrel exports for DB helper modules)
 |   `-- routes/
-|       |-- __init__.py (shared path/url helpers + template rendering)
-|       |-- home.py (home route and app lifespan initialization)
-|       |-- vendors.py (vendor listing, create/edit, archive/unarchive routes)
-|       |-- entries.py (entry create/edit routes, upload handling, ICS export)
-|       |-- logbook.py (global chronological logbook route + pagination)
-|       |-- labels.py (label admin page + JSON label management API routes)
+|       |-- __init__.py (shared template rendering, path_for helper, MAX_UPLOAD_BYTES)
+|       |-- home.py (home route and lifespan initialization)
+|       |-- vendors.py (vendor listing, create/edit, archive/unarchive, delete flows)
+|       |-- entries.py (entry create/edit/delete routes, attachment downloads, ICS export)
+|       |-- logbook.py (global chronological logbook route with pagination and search)
+|       |-- labels.py (label admin page plus JSON label management routes)
 |       `-- settings.py (settings form GET/POST routes)
 |-- templates/
-|   |-- base.html (shared shell layout, top navigation, and script blocks)
-|   |-- home.html (home dashboard, launcher tiles, and dev smoke test controls)
-|   |-- vendor_listing.html (vendor index with A-Z and category views)
-|   |-- vendor_form.html (vendor create/edit form)
-|   |-- vendor_detail.html (vendor profile and timeline landing page)
-|   |-- entry_form.html (entry create/edit workflow page)
-|   |-- logbook.html (global paginated logbook timeline view)
-|   |-- label_admin.html (label management page)
-|   |-- settings.html (location metadata settings form)
 |   |-- 404.html (not-found error view)
+|   |-- base.html (shared shell layout, navigation, and script blocks)
+|   |-- entry_form.html (entry create/edit workflow page)
+|   |-- entry_vendor_picker.html (global new-entry vendor selection page)
 |   |-- error.html (generic error view for 4xx/5xx responses)
+|   |-- home.html (home dashboard)
+|   |-- label_admin.html (label management page)
+|   |-- logbook.html (global paginated logbook timeline view)
+|   |-- settings.html (location metadata settings form)
+|   |-- vendor_delete.html (archived-vendor delete confirmation page)
+|   |-- vendor_detail.html (vendor profile and timeline landing page)
+|   |-- vendor_form.html (vendor create/edit form)
+|   |-- vendor_listing.html (vendor index with A-Z and category views)
+|   |-- macros/
+|   |   `-- overflow_menu.html (shared overflow action menu macro)
 |   `-- partials/
-|       |-- vendor_header_card.html (shared vendor summary/header card)
-|       |-- log_entry_card.html (shared timeline entry card rendering)
-|       |-- logbook_entry_card.html (shared logbook page entry card rendering)
+|       |-- actor_control.html (shared actor override control)
 |       |-- label_picker.html (shared label picker UI fragment)
-|       `-- actor_control.html (shared actor override control used in headers)
+|       |-- log_entry_card.html (vendor timeline entry card rendering)
+|       |-- logbook_entry_card.html (global logbook entry card rendering)
+|       `-- vendor_header_card.html (shared vendor summary/header card)
 |-- static/
 |   |-- css/
 |   |   |-- base.css (theme tokens and foundational typography/colors)
-|   |   |-- layout.css (app-shell layout primitives)
-|   |   |-- components.css (shared button and reusable component styling)
-|   |   |-- forms.css (input/textarea/form-field styling and settings panel sizing)
-|   |   |-- home.css (home page panel and launcher tile styles)
-|   |   |-- vendors.css (vendor listing/detail specific styles)
+|   |   |-- components.css (shared buttons and reusable component styling)
 |   |   |-- entries.css (entry workflow and timeline styles)
-|   |   `-- labels.css (label management and label-chip styles)
+|   |   |-- forms.css (input/textarea/form-field styling)
+|   |   |-- home.css (home page layout styles)
+|   |   |-- labels.css (label management and label-chip styles)
+|   |   |-- layout.css (app-shell layout primitives)
+|   |   `-- vendors.css (vendor listing/detail styles)
 |   `-- js/
 |       |-- actor_control.js (actor/user override UI)
-|       |-- entry_form.js (entry form interactions, calendar, layout resizing)
+|       |-- entry_form.js (entry form interactions, calendar helpers, layout behavior)
 |       |-- entry_vendor_picker.js (vendor selection UX for global new-entry flow)
-|       |-- label_picker.js (label autocomplete and selection)
+|       |-- external_links.js (marks external links with an icon)
 |       |-- label_admin.js (label management inline editing)
+|       |-- label_picker.js (label autocomplete and selection)
+|       |-- smokeTester.js (dev smoke test and sample data route exerciser)
+|       |-- time.js (UTC-to-local time formatting)
+|       |-- unsaved_changes.js (form dirty-state detection and navigation warnings)
 |       |-- vendor_header_card.js (phone number link formatting)
-|       |-- vendors.js (A-Z and category view switching, vendor search)
-|       |-- time.js (UTC to local time formatting)
-|       |-- external_links.js (marking external links with icon)
-|       |-- unsaved_changes.js (form dirty state detection, navigation warnings)
-|       `-- smokeTester.js (dev-only smoke test and sample data route exerciser)
+|       `-- vendors.js (A-Z/category view switching and vendor search)
 |-- data/
 |   |-- logbook.db (SQLite database file for app data; default APP_DB_PATH)
 |   `-- uploads/ (stored uploaded files organized by date folders; default APP_UPLOADS_DIR)
@@ -171,7 +179,7 @@ HomeServicesLogbook-Dev/
 ## app/main.py
 
 Responsibilities:
-- Creates FastAPI app with lifespan from app/routes/home.py.
+- Creates the FastAPI app with lifespan from app/routes/home.py.
 - Applies root_path from APP_ROOT_PATH.
 - Mounts static files at /static.
 - Registers exception handlers:
@@ -192,47 +200,58 @@ Responsibilities:
 
 Shared route utilities:
 - BASE_DIR path resolution.
-- MAX_UPLOAD_BYTES (10 MB).
-- path_for helper that respects app root_path.
-- Template rendering helper with current actor context.
+- MAX_UPLOAD_BYTES = 10 MB.
+- Jinja template registry.
+- path_for helper that respects root_path and avoids duplicate prefixes.
+- render_template helper that injects request, url_for, current_actor, and allow_actor_override.
 
 ## app/actor.py
 
 Actor and override handling:
-- Current actor resolver with explicit precedence:
-  - actor_override cookie
-  - trusted upstream header (config-gated)
-  - default user
-- Actor helper routes:
-  - POST /actor/set
-  - POST /actor/reset
+- Current actor precedence:
+  - actor_override cookie, but only when ALLOW_ACTOR_OVERRIDE is enabled
+  - trusted upstream header, when TRUST_UPSTREAM_AUTH is enabled
+  - default actor_id = user
+- Async/fetch requests receive JSON responses.
+- Non-async requests receive redirects back to the referer or home page.
 
 ## app/runtime.py
 
 Environment normalization helpers and runtime constants:
 - TRUST_UPSTREAM_AUTH
 - UPSTREAM_ACTOR_HEADER
+- ALLOW_ACTOR_OVERRIDE
 - APP_ROOT_PATH
 - APP_DATA_DIR
 - APP_UPLOADS_DIR
 - APP_DB_PATH
 - APP_COOKIE_PATH
 
+Runtime module behavior:
+- resolves repo-relative or absolute data paths
+- ensures APP_DATA_DIR and APP_UPLOADS_DIR exist
+- validates that APP_DB_PATH points to a file location
+
 ## Environment Configuration
 
-Actor resolution behavior is controlled by these environment variables:
+Actor resolution and path behavior are controlled by these environment variables:
 
 - TRUST_UPSTREAM_AUTH
   - Default: false
-  - When true, app can read actor identity from a trusted upstream header.
-  - When false, upstream header values are ignored.
+  - Truthy values accepted: 1, true, yes, on
+  - When enabled, app can read actor identity from a trusted upstream header.
 
 - UPSTREAM_ACTOR_HEADER
   - Default: X-Remote-User
   - Header name used for upstream actor identity when TRUST_UPSTREAM_AUTH is enabled.
 
+- ALLOW_ACTOR_OVERRIDE
+  - Default: false
+  - Enabled only for strict values 1 or true
+  - When disabled, POST /actor/set and POST /actor/reset do not modify cookies.
+
 - APP_ROOT_PATH
-  - Default: empty (mounted at site root)
+  - Default: empty string (mounted at site root)
   - Normalized to a leading slash with no trailing slash.
   - Used as FastAPI root_path and by path_for when generating links.
 
@@ -253,21 +272,21 @@ Actor resolution behavior is controlled by these environment variables:
 
 - APP_COOKIE_PATH
   - Derived from APP_ROOT_PATH.
-  - Used to scope actor/show-archived cookies for subpath deployments.
+  - Used to scope actor and archived-list preference cookies for subpath deployments.
 
 ## app/db/
 
 - connection.py: sqlite connection + Row factory.
-- schema.py: table/index creation in init_db().
-- vendors.py: vendor CRUD + archive/unarchive.
-- entries.py: entry CRUD/listing.
-- attachments.py: attachment metadata CRUD/listing.
+- schema.py: table/index creation in init_db() and default settings seed.
+- vendors.py: vendor CRUD, archive/unarchive, delete confirmation context, permanent delete.
+- entries.py: entry CRUD, logbook pagination/search helpers, vendor entry form context, related data aggregation.
+- attachments.py: attachment metadata CRUD, upload writing, safe path resolution, file cleanup helpers.
 - labels.py: label CRUD/search and vendor/entry label assignment helpers.
-- settings.py: singleton settings read/update helpers.
+- settings.py: singleton settings read/update helpers with self-healing row insertion.
 
 Operational preference in DB modules:
-- prefer operation-level functions that perform complete actions (for example update_entry_by_uid, create_entry_for_vendor_uid, delete_entry_by_uid)
-- avoid adding generic service layers or abstraction frameworks
+- prefer operation-level functions that perform complete actions such as create_entry_for_vendor_uid, replace_entry_labels_by_uid, delete_entry_by_uid, and delete_vendor_by_uid
+- avoid generic service layers or abstraction frameworks
 
 ---
 
@@ -275,7 +294,7 @@ Operational preference in DB modules:
 
 ## Home
 
-- GET / -> Home page
+- GET / -> Home page with current settings row
 
 ## Settings
 
@@ -284,41 +303,46 @@ Operational preference in DB modules:
 
 ## Actor
 
-- POST /actor/set -> Set actor_override cookie from form actor_id
-- POST /actor/reset -> Clear actor_override cookie
+- POST /actor/set -> Set actor_override from form actor_id when overrides are enabled; otherwise return current actor state
+- POST /actor/reset -> Clear actor_override cookie when overrides are enabled
+
+Both actor routes return JSON for fetch/JSON requests and redirects for standard form posts.
 
 ## Vendors
 
-- GET /vendors -> Vendor list (respects show_archived preference via query/cookie)
+- GET /vendors -> Vendor list with show_archived preference from query/cookie
 - GET /vendors/new -> New vendor form
-- POST /vendors/new -> Create vendor + assign vendor labels
-- GET /vendor/{vendor_uid} -> Vendor detail with timeline, attachments, labels
+- POST /vendors/new -> Create vendor and assign vendor labels
+- GET /vendor/{vendor_uid} -> Vendor detail with timeline, attachments, labels, and delete_blocked banner support
 - GET /vendor/{vendor_uid}/edit -> Edit vendor form
-- POST /vendor/{vendor_uid}/edit -> Update vendor + replace vendor labels
+- POST /vendor/{vendor_uid}/edit -> Update vendor and replace vendor labels
 - POST /vendor/{vendor_uid}/archive -> Archive vendor
 - POST /vendor/{vendor_uid}/unarchive -> Unarchive vendor
+- GET /vendor/{vendor_uid}/delete -> Archived-vendor delete confirmation page
+- POST /vendor/{vendor_uid}/delete/confirm -> Permanently delete archived vendor and all related entries/attachments
 
 ## Logbook
 
-- GET /logbook -> Global chronological timeline with pagination and archived-vendor toggle
+- GET /logbook -> Global chronological timeline with pagination, archived-vendor toggle, and q text search
 
 ## Entries + Attachments + ICS
 
 - GET /entries/new -> Global new-entry vendor picker
 - GET /vendor/{vendor_uid}/entries/new -> New entry form for vendor
 - POST /vendor/{vendor_uid}/entries -> Create entry, labels, and uploads
-- GET /entry/{entry_uid}/edit -> Edit existing entry
-- POST /entry/{entry_uid}/edit -> Update entry, labels, attachments
 - GET /attachments/{attachment_uid} -> Download attachment from disk
+- GET /entry/{entry_uid}/edit -> Edit existing entry, with optional next return target
+- POST /entry/{entry_uid}/edit -> Update entry, labels, remove selected attachments, add uploads
+- POST /entry/{entry_uid}/delete -> Delete entry and redirect to vendor detail or provided next target
 - POST /calendar/export -> Generate downloadable .ics file
 
 ## Labels
 
 - GET /labels -> Label admin page
-- POST /labels/new -> Create label (JSON)
-- POST /labels/{label_uid}/rename -> Rename label (JSON)
-- POST /labels/{label_uid}/color -> Update label color (JSON)
-- POST /labels/{label_uid}/delete -> Delete label (JSON)
+- POST /labels/new -> Create label from JSON body
+- POST /labels/{label_uid}/rename -> Rename label from JSON body
+- POST /labels/{label_uid}/color -> Update label color from JSON body
+- POST /labels/{label_uid}/delete -> Delete label from JSON body
 - GET /api/labels/suggest?q=... -> Label autocomplete API
 
 ---
@@ -336,10 +360,10 @@ Core persistence model:
 
 Behavior model:
 - Entries are the chronological source record.
-- Labels are optional metadata for organization/filtering.
+- Labels are optional metadata for organization and filtering.
 - Attachments are file-backed and linked to entries, with file + DB lifecycle owned in app/db/attachments.py.
-- Settings is a singleton row (id = 1) used for home page location metadata.
-- Actor context is resolved per request (override cookie -> optional trusted upstream header -> default user).
+- Settings is a singleton row (id = 1) used on the home page.
+- Actor context is resolved per request from override cookie -> upstream header -> default user.
 
 ---
 
@@ -348,30 +372,33 @@ Behavior model:
 ## Example: Edit Entry
 
 1. Route handler receives entry_uid from /entry/{entry_uid}/edit.
-2. Route validates/normalizes form fields.
+2. Route validates timestamps, attachment uploads, and optional internal redirect target.
 3. Route calls update_entry_by_uid(entry_uid=..., ...).
-4. Route calls replace_entry_labels_by_uid(entry_uid, label_ids) for labels.
-5. Route calls delete_entry_attachment_by_uid(attachment_uid) and store_attachment_uploads_for_entry_uid(entry_uid, uploads, ...).
-6. Route returns redirect/template response.
+4. Route calls replace_entry_labels_by_uid(entry_uid=..., label_uids=..., new_label_names=...).
+5. Route calls delete_entry_attachment_by_uid_for_entry_uid(entry_uid, attachment_uid) for removals.
+6. Route calls store_attachment_uploads_for_entry_uid(entry_uid, uploads, ...).
+7. Route redirects to the supplied next target or back to the vendor detail page.
 
 Primary keys remain internal to DB modules during all operations.
 
-## Example: Delete Entry
+## Example: Delete Vendor
 
-1. Route receives entry_uid at /entry/{entry_uid}/delete.
-2. Route calls delete_entry_by_uid(entry_uid).
-3. DB layer resolves entry_uid -> entry id, deletes attachment files through db/attachments, then removes attachment rows, label joins, and the entry row.
-4. DB layer returns vendor_uid for redirect.
-5. Route redirects using vendor_uid.
+1. Route receives vendor_uid at /vendor/{vendor_uid}/delete/confirm.
+2. Route verifies the vendor exists and is already archived.
+3. Route calls delete_vendor_by_uid(vendor_uid).
+4. DB layer resolves vendor_uid -> vendor id, gathers entry IDs, deletes attachment files, then removes attachment rows, entry label rows, entry rows, vendor label rows, and the vendor row.
+5. Route redirects to the vendor list with show_archived=1.
 
 ---
 
 ## Operational Notes
 
 - First app startup initializes schema through lifespan -> init_db().
-- Settings singleton row (id = 1) is inserted during init when missing.
-- settings access helpers also self-heal the singleton row when absent.
-- Development schema changes are applied by recreating APP_DB_PATH (default data/logbook.db).
+- settings helpers also self-heal the singleton row when absent.
+- Development schema changes are currently applied by recreating APP_DB_PATH instead of running migrations.
 - Upload size cap is 10 MB per file.
 - Attachment path checks prevent file access outside APP_UPLOADS_DIR.
-- Entry creation intentionally no-ops (redirects without insert) when all entry fields, labels, and attachments are blank.
+- Entry creation intentionally no-ops when all entry fields, labels, and attachments are blank.
+- Archived vendors cannot accept new entries.
+- Vendors must be archived before permanent deletion is allowed.
+- Logbook ordering uses entry_interaction_at when present, otherwise entry_created_at.

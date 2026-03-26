@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document describes the current SQLite schema used by the app.
+This document describes the current SQLite schema used by the app and the way the current code exercises it.
 
 Source of truth:
 - app/db/schema.py
@@ -21,23 +21,24 @@ Labels are optional organizational metadata that can be attached to both vendors
 - SQLite-first, no ORM.
 - Parameterized SQL only.
 - Files stored on disk; DB stores file metadata.
-- Public UIDs are used in URLs, internal integer IDs are used for relationships.
+- Public UIDs are used in routes and URLs; internal integer IDs are used for relationships.
 - Most non-key fields are optional.
-- entries is the center of chronological history.
+- entries remains the center of chronological history.
 
 Layer boundary contract:
-- app/routes/* uses UID-shaped values only and orchestrates request/response flow.
-- app/db/* owns SQL, transactions, UID <-> PK resolution, and data integrity behavior.
-- integer primary keys remain internal to DB modules and must not be exposed to routes.
-- filesystem path and storage concerns remain inside DB attachment operations.
+- app/routes/* uses public identifiers and orchestrates request/response flow.
+- app/db/* owns SQL, transactions, UID <-> PK resolution, and multi-step integrity behavior.
+- integer primary keys remain internal to DB modules.
+- attachment path and file lifecycle concerns live in app/db/attachments.py.
 
 ---
 
 ## Schema Lifecycle
 
 - Schema is initialized at startup by app/db/schema.py:init_db.
-- During initialization, the singleton settings row is inserted with id = 1 when missing.
-- Development workflow applies schema changes by recreating the SQLite file at APP_DB_PATH (default: data/logbook.db).
+- init_db creates tables and indexes, then inserts the singleton settings row with id = 1 when missing.
+- settings access helpers also self-heal the singleton row if it is missing later.
+- Development workflow currently applies schema changes by recreating the SQLite file at APP_DB_PATH.
 - Migration/backfill logic is intentionally not included in init_db.
 
 ---
@@ -47,7 +48,7 @@ Layer boundary contract:
 ## vendors
 
 Purpose:
-- Canonical record for a service provider/company reference sheet.
+- Canonical vendor/service-provider reference sheet.
 
 ```sql
 CREATE TABLE IF NOT EXISTS vendors (
@@ -69,14 +70,16 @@ CREATE TABLE IF NOT EXISTS vendors (
 );
 ```
 
-Notes:
-- vendor_uid is the public identifier used in vendor URLs.
+Current usage notes:
+- vendor_uid is the public identifier used in vendor routes.
 - vendor_archived_at marks archived vendors.
+- vendor_updated_at and vendor_updated_by are written during archive, unarchive, and edit operations.
+- vendor_details_json exists for future flexibility and is not currently populated by the main vendor form flow.
 
 ## entries
 
 Purpose:
-- Timeline records tied to a vendor.
+- Chronological logbook records tied to a vendor.
 
 ```sql
 CREATE TABLE IF NOT EXISTS entries (
@@ -96,10 +99,11 @@ CREATE TABLE IF NOT EXISTS entries (
 );
 ```
 
-Notes:
-- entry_uid is the public identifier used in entry edit URLs.
-- Entries are editable after creation (title, interaction timestamp, body text, representative, labels, attachments).
-- Vendor archival is supported via vendor_archived_at.
+Current usage notes:
+- entry_uid is the public identifier used in entry edit/delete routes.
+- Entries are editable after creation, including labels and attachments.
+- Logbook ordering uses COALESCE(entry_interaction_at, entry_created_at).
+- entry_extra_json exists for future flexibility and is not currently populated by the form routes.
 
 ## attachments
 
@@ -123,16 +127,18 @@ CREATE TABLE IF NOT EXISTS attachments (
 );
 ```
 
-Notes:
+Current usage notes:
 - attachment_relative_path is stored with forward slashes.
-- Files are persisted under APP_UPLOADS_DIR/YYYY/MM/ (default: data/uploads/YYYY/MM/).
+- Files are persisted under APP_UPLOADS_DIR/YYYY/MM/.
+- attachment_original_filename is sanitized metadata, not the raw client filename.
+- attachment_stored_filename is an internal, collision-resistant disk filename.
+- attachment_checksum_sha256 exists in the schema but is not currently populated by store_attachment_upload.
 - Attachment lifecycle behavior (write, safe path resolution, delete file + row coordination) is owned by app/db/attachments.py.
-- Route handlers should call UID-based attachment DB functions and should not perform direct file I/O.
 
 ## labels
 
 Purpose:
-- Reusable label definitions used for filtering/grouping in UI.
+- Reusable label definitions used for filtering and grouping in the UI.
 
 ```sql
 CREATE TABLE IF NOT EXISTS labels (
@@ -147,9 +153,10 @@ CREATE TABLE IF NOT EXISTS labels (
 );
 ```
 
-Notes:
+Current usage notes:
 - label_name is case-insensitive unique.
-- label_color accepts hex values validated in app logic.
+- label_color accepts #RRGGBB or #RRGGBBAA values validated in app logic.
+- DB helper queries commonly project label_name AS name and label_color AS color for route/template use.
 
 ## vendor_labels
 
@@ -166,6 +173,9 @@ CREATE TABLE IF NOT EXISTS vendor_labels (
 );
 ```
 
+Current usage notes:
+- Vendor label assignments are replaced wholesale by replace_vendor_labels and replace_vendor_labels_by_uid.
+
 ## entry_labels
 
 Purpose:
@@ -180,6 +190,10 @@ CREATE TABLE IF NOT EXISTS entry_labels (
     FOREIGN KEY (label_id) REFERENCES labels(id) ON DELETE CASCADE
 );
 ```
+
+Current usage notes:
+- Entry label assignments are replaced wholesale by replace_entry_labels and replace_entry_labels_by_uid.
+- New labels may be created on demand during label resolution when form submissions include new_label_names.
 
 ## settings
 
@@ -202,8 +216,8 @@ Seed behavior:
 - Default location_name = Welcome Home.
 - Default location_address = empty string.
 - Default location_description = See Settings below to change this header.
-- updated_at uses app UTC timestamp helper.
-- updated_by defaults to system.
+- updated_at uses the UTC timestamp helper.
+- updated_by defaults to system during seeding/self-heal.
 
 ---
 
@@ -244,12 +258,20 @@ CREATE INDEX IF NOT EXISTS idx_entry_labels_label_id
 
 - vendors 1 -> many entries
 - entries 1 -> many attachments
-- vendors many <-> many labels (through vendor_labels)
-- entries many <-> many labels (through entry_labels)
+- vendors many <-> many labels through vendor_labels
+- entries many <-> many labels through entry_labels
 - settings is a singleton table keyed by id = 1
 
-Labels are organizational metadata and do not replace timeline data in entries.
+Deletion behavior in current code:
+- vendor_labels and entry_labels have ON DELETE CASCADE foreign keys.
+- entries and attachments are removed explicitly by DB helper functions during delete_entry_by_uid and delete_vendor_by_uid.
+- Attachment files are deleted from disk before related DB rows are removed.
+
+Query behavior in current code:
+- Logbook search matches entry_title, entry_body_text, entry_rep_name, vendor_name, and entry label names.
+- Vendor list and logbook routes both support showing archived vendors based on a cookie/query preference.
+- Labels are organizational metadata and do not replace timeline data in entries.
 
 Boundary reminder:
-- Route-to-DB calls should be UID-oriented (vendor_uid, entry_uid, attachment_uid).
+- Route-to-DB calls use public identifiers such as vendor_uid, entry_uid, attachment_uid, and label_uid.
 - DB modules may use integer IDs internally to execute relational operations.
