@@ -1,11 +1,8 @@
-from pathlib import Path
-
 from fastapi import Request
 from fastapi.templating import Jinja2Templates
 
 from app.runtime import ALLOW_ACTOR_OVERRIDE
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 
 templates = Jinja2Templates(directory="templates")

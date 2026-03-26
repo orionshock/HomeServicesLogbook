@@ -5,14 +5,6 @@
     margin-right: auto;
 }
 
-.home-site-kicker {
-    margin: 0 0 4px;
-    color: var(--muted);
-    font-size: 0.86rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-}
-
 .home-site-title {
     margin: 0 0 6px;
 }

@@ -98,28 +98,6 @@ def create_attachment(
         )
 
 
-def delete_attachment_by_uid_for_entry(entry_id: int, attachment_uid: str) -> sqlite3.Row | None:
-    """Delete a specific attachment row scoped to an entry, returning deleted metadata."""
-    with get_connection() as conn:
-        attachment = conn.execute(
-            """
-            SELECT id, attachment_uid, entry_id, attachment_original_filename,
-                   attachment_relative_path, attachment_mime_type
-            FROM attachments
-            WHERE entry_id = ? AND attachment_uid = ?
-            """,
-            (entry_id, attachment_uid),
-        ).fetchone()
-        if attachment is None:
-            return None
-
-        conn.execute(
-            "DELETE FROM attachments WHERE id = ?",
-            (attachment["id"],),
-        )
-        return attachment
-
-
 def _resolve_attachment_path(relative_path: str) -> Path | None:
     """Returns the absolute path if it safely falls within APP_UPLOADS_DIR, else None."""
     rel = Path(relative_path)

@@ -94,12 +94,6 @@
     display: none;
 }
 
-.vendor-title-subtitle {
-    font-size: 0.65em;
-    font-weight: 500;
-    color: var(--muted);
-}
-
 .vendor-details-grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
