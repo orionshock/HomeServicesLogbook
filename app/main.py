@@ -6,6 +6,7 @@ from app.actor import resolve_current_actor, router as actor_router
 from app.routes import render_template
 from app.routes.entries import router as entries_router
 from app.routes.home import lifespan, router as home_router
+from app.routes.ingressdebug import router as ingressdebug_router
 from app.routes.labels import router as labels_router
 from app.routes.logbook import router as logbook_router
 from app.routes.settings import router as settings_router
@@ -90,3 +91,4 @@ app.include_router(entries_router)
 app.include_router(logbook_router)
 app.include_router(labels_router)
 app.include_router(settings_router)
+app.include_router(ingressdebug_router)
