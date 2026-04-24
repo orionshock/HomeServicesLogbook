@@ -6,6 +6,17 @@ It is meant to feel like a digital filing cabinet plus a running logbook: vendor
 
 It is designed for homeowners who want a simple way to track service providers, past work, and related documents without relying on spreadsheets or scattered notes.
 
+## Screenshots
+
+<p><img src="docs/screenshots/NewNoteBlank.jpg" alt="New entry form" width="700"></p>
+<p><em>New entry form.</em></p>
+
+<p><img src="docs/screenshots/vendordetail.jpg" alt="Vendor detail page" width="700"></p>
+<p><em>Vendor detail page with service history and attachments.</em></p>
+
+<p><img src="docs/screenshots/logbookview.jpg" alt="Logbook history view" width="700"></p>
+<p><em>Logbook history view.</em></p>
+
 ## Features
 
 ### Vendor & Entry Tracking
